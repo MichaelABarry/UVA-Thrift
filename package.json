@@ -7,9 +7,9 @@
     "server": "nodemon --exec ts-node server/index.ts",
     "client": "cd client && npm run dev",
     "dev": "concurrently \"npm run server\" \"npm run client\"",
-    "build": "tsc && cd client && npm run build",
+    "build": "tsc -p . && cd client && npm run build",
     "start": "node dist/index.js",
-    "heroku-postbuild": "cd client && npm install && npm run build",
+    "heroku-postbuild": "cd client && npm install --include=dev && npm run build",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "repository": {
