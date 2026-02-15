@@ -21,7 +21,8 @@ app.get('/api/health', (req: Request, res: Response) => {
 if (process.env.NODE_ENV === 'production') {
   app.use(express.static(path.join(__dirname, '../client/build')));
   
-  app.get('*', (req: Request, res: Response) => {
+  // Catch-all route for React Router - serve index.html for all routes
+  app.get('/{*splat}', (req: Request, res: Response) => {
     res.sendFile(path.join(__dirname, '../client/build', 'index.html'));
   });
 }
