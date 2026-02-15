@@ -9,7 +9,7 @@
     "dev": "concurrently \"npm run server\" \"npm run client\"",
     "build": "tsc -p . && cd client && npm run build",
     "start": "node dist/index.js",
-    "heroku-postbuild": "cd client && npm install --include=dev && npm run build",
+    "heroku-postbuild": "tsc -p . && cd client && npm install --include=dev && npm run build",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "repository": {
