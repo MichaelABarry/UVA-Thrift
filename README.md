@@ -82,42 +82,6 @@ npm run server
 npm run client
 ```
 
-## Heroku Deployment
-
-### Initial Setup
-
-1. **Install Heroku CLI** (if not already installed):
-   ```bash
-   brew tap heroku/brew && brew install heroku
-   ```
-
-2. **Login to Heroku**:
-   ```bash
-   heroku login
-   ```
-
-3. **Create Heroku app**:
-   ```bash
-   heroku create your-app-name
-   ```
-
-4. **Add PostgreSQL addon**:
-   ```bash
-   heroku addons:create heroku-postgresql:essential-0
-   ```
-
-   This automatically sets the `DATABASE_URL` environment variable.
-
-5. **Set environment variables**:
-   ```bash
-   heroku config:set NODE_ENV=production
-   ```
-
-6. **Add Heroku remote** (if not already added):
-   ```bash
-   heroku git:remote -a your-app-name
-   ```
-
 ### Deploying
 
 1. **Commit your changes**:
