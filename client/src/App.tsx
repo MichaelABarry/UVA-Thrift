@@ -32,9 +32,6 @@ function App() {
           Server Status: <strong>{serverStatus}</strong>
         </p>
       </div>
-      <p className="read-the-docs">
-        Ready to build your CRUD functionality!
-      </p>
     </>
   )
 }

@@ -133,25 +133,3 @@ heroku config
 ## API Endpoints
 
 - `GET /api/health` - Health check endpoint
-
-Add your CRUD endpoints in `server/index.ts`.
-
-## Development Notes
-
-- Vite proxies API requests to `http://localhost:5000` in development (configured in `vite.config.ts`)
-- In production, the Express server serves the built React app from `client/build`
-- TypeScript files are compiled to `dist/` directory
-- Database connection uses SSL in production (Heroku requirement)
-- Vite provides fast HMR (Hot Module Replacement) for efficient development
-
-## Next Steps
-
-1. Add CRUD routes in `server/index.ts`
-2. Create database models and controllers
-3. Build React components for CRUD operations
-4. Add authentication if needed
-5. Implement API endpoints and connect to database
-
----
-
-**Ready to deploy!** Just push to your Heroku remote to deploy the app.
