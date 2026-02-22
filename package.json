@@ -1,0 +1,23 @@
+{
+  "name": "uva-thrift",
+  "private": true,
+  "version": "1.0.0",
+  "description": "UVA Thrift fullstack monorepo",
+  "workspaces": [
+    "client",
+    "server"
+  ],
+  "scripts": {
+    "dev": "concurrently -k \"npm run dev -w server\" \"npm run dev -w client\"",
+    "build": "npm run build -w client && npm run build -w server",
+    "start": "npm run start -w server",
+    "heroku-postbuild": "npm run build",
+    "lint": "npm run lint -w client && npm run lint -w server"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "devDependencies": {
+    "concurrently": "^9.2.1"
+  }
+}
