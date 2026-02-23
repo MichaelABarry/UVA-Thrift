@@ -49,7 +49,6 @@ Make sure the `createdb-18` binary is added to $PATH
 
 ```bash
 createdb-18 uva_thrift_dev
-psql uva_thrift_dev < server/schema.sql
 cd server && npm run migrate
 ```
 
