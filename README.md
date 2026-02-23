@@ -37,6 +37,7 @@ From the project root:
 
 ```bash
 npm install
+cd server && npm install && cd ..
 cd client && npm install && cd ..
 ```
 
@@ -55,13 +56,13 @@ psql uva_thrift_dev < server/schema.sql
 
 ## 4) Create your Local `.env` file
 
-Copy `.env.example` into `.env` and get values from Caden.
+Copy `.env.example` into `.env` in `server` and `client` directories:
 
 ```bash
 cp .env.example .env
 ```
 
-Copy the output of this command into the `JWT_SECRET` variable:
+Copy the output of this command into the `SESSION_SECRET` variable in `server/.env`:
 
 ```bash
 openssl rand -hex 64
@@ -74,12 +75,8 @@ openssl rand -hex 64
 The app sends verification links by email. To make this **fully functional**, set real SMTP credentials.
 
 You need:
-- `SMTP_HOST`
-- `SMTP_PORT`
-- `SMTP_SECURE` (`true` for 465 SSL, `false` for 587 STARTTLS)
-- `SMTP_USER`
-- `SMTP_PASS`
-- `EMAIL_FROM`
+- `POSTMARK_SERVER_TOKEN`
+- `POSTMARK_FROM_EMAIL`
 
 ### Important note for local testing
 
@@ -101,8 +98,8 @@ This starts:
 
 ## 7) Test the full login flow (exact steps)
 
-1. Open `http://localhost:3000`
-2. Click **Create Account**
+1. Open `http://localhost:5173`
+2. Click **Register**
 3. Register with an address ending in `@virginia.edu`
 4. Check verification link:
    - If SMTP is configured: check inbox

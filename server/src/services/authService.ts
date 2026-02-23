@@ -19,10 +19,15 @@ const authSchema = z.object({
 
 const SESSION_DURATION_MS = 1000 * 60 * 60 * 24 * 7;
 const VERIFICATION_DURATION_MS = 1000 * 60 * 30;
+const ALLOWED_REGISTRATION_DOMAIN = '@virginia.edu';
 
 export async function registerUser(input: unknown) {
   const parsed = authSchema.parse(input);
   const normalizedEmail = parsed.email.toLowerCase().trim();
+
+  if (!normalizedEmail.endsWith(ALLOWED_REGISTRATION_DOMAIN)) {
+    throw new HttpError('Registration is limited to @virginia.edu email addresses.', 400);
+  }
 
   const existing = await findUserByEmail(normalizedEmail);
   if (existing) {
