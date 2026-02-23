@@ -72,7 +72,7 @@ openssl rand -hex 64
 
 ## 5) SMTP setup (required for real email verification)
 
-The app sends verification links by email. We use **Brevo** (formerly Sendinblue) via SMTP.
+The app sends verification links by email. We use **Brevo** via SMTP.
 
 You need:
 - `SMTP_HOST` (usually smtp-relay.brevo.com)
