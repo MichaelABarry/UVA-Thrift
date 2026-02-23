@@ -74,11 +74,12 @@ openssl rand -hex 64
 
 The app sends verification links by email. We use **Brevo** via SMTP.
 
-You need:
+You'll need to update the .env with the following:
 - `SMTP_HOST` (usually smtp-relay.brevo.com)
 - `SMTP_PORT` (587)
 - `SMTP_USER` (your Brevo login email)
 - `SMTP_PASS` (your Brevo SMTP master password)
+- `SMTP_FROM` (Verified sender email address)
 
 ### Important note for local testing
 
