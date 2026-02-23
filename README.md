@@ -1,135 +1,125 @@
 # UVA Thrift
 
-Full-stack CRUD application with Node.js/TypeScript backend, React/TypeScript frontend, and PostgreSQL database, ready for Heroku deployment.
+UVA-only local marketplace app with:
+- Node.js + TypeScript backend (Express)
+- React + Vite frontend
+- PostgreSQL database
 
-## Tech Stack
+---
 
-- **Backend**: Node.js, Express, TypeScript
-- **Frontend**: React with TypeScript + Vite
-- **Database**: PostgreSQL
-- **Deployment**: Heroku
+# Steps to Spin Up Development Server
 
-## Project Structure
+## 1) What you need installed
 
-```
-.
-├── server/           # Backend TypeScript code
-│   ├── index.ts     # Express server entry point
-│   ├── db.ts        # PostgreSQL connection config
-│   └── schema.sql   # Database schema
-├── client/          # React + Vite frontend
-│   ├── src/         # React source code
-│   ├── build/       # Vite build output (generated)
-│   └── vite.config.ts # Vite configuration
-├── dist/            # Compiled backend code (generated)
-├── .env             # Environment variables (local)
-├── Procfile         # Heroku process file
-├── tsconfig.json    # TypeScript config for backend
-└── package.json     # Root dependencies and scripts
+1. **Node.js 22.x**
+2. **npm 11.x**
+3. **PostgreSQL** server running locally (for development):
+
+For Homebrew on Mac:
+```bash
+brew install postgresql@18
+brew services start postgresql@18
 ```
 
-## Local Development Setup
+To check versions:
 
-### Prerequisites
+```bash
+node -v
+npm -v
+psql --version
+```
 
-- Node.js 22.x
-- npm 11.x
-- PostgreSQL installed locally
+---
 
-### Installation
+## 2) Install project dependencies
 
-1. **Install dependencies**:
-   ```bash
-   npm install
-   ```
+From the project root:
 
-2. **Set up PostgreSQL database**:
-   ```bash
-   # Create database
-   createdb uva_thrift_dev
-   
-   # Run schema
-   psql uva_thrift_dev < server/schema.sql
-   ```
+```bash
+npm install
+cd server && npm install && cd ..
+cd client && npm install && cd ..
+```
 
-3. **Configure environment variables**:
-   
-   Edit `.env` file with your local database URL:
-   ```
-   PORT=5000
-   DATABASE_URL=postgresql://localhost:5432/uva_thrift_dev
-   NODE_ENV=development
-   ```
+---
 
-### Running the App
+## 3) Create local PostgreSQL database
 
-**Development mode** (runs both frontend and backend):
+Make sure the `createdb-18` binary is added to $PATH
+
+```bash
+createdb-18 uva_thrift_dev
+cd server && npm run migrate
+```
+
+---
+
+## 4) Create your Local `.env` file
+
+Copy `.env.example` into `.env` in `server` and `client` directories:
+
+```bash
+cp .env.example .env
+```
+
+Copy the output of this command into the `SESSION_SECRET` variable in `server/.env`:
+
+```bash
+openssl rand -hex 64
+```
+
+---
+
+## 5) SMTP setup (required for real email verification)
+
+The app sends verification links by email. To make this **fully functional**, set real SMTP credentials.
+
+You need:
+- `POSTMARK_SERVER_TOKEN`
+- `POSTMARK_FROM_EMAIL`
+
+### Important note for local testing
+
+For local testing, you can leave these values as-is and the backend server will log the verification link to the console instead of sending it in an email. For production, configure an SMTP client and fill in the environment variables above.
+
+---
+
+## 6) Start the app locally
+
 ```bash
 npm run dev
 ```
 
-This will start:
-- Backend server on `http://localhost:5000`
-- Vite dev server on `http://localhost:3000`
+This starts:
+- Backend: `http://localhost:4000`
+- Frontend: `http://localhost:5173`
 
-**Backend only**:
-```bash
-npm run server
-```
+---
 
-**Frontend only**:
-```bash
-npm run client
-```
+## 7) Test the full login flow (exact steps)
 
-### Deploying
+1. Open `http://localhost:5173`
+2. Click **Register**
+3. Register with an address ending in `@virginia.edu`
+4. Check verification link:
+   - If SMTP is configured: check inbox
+   - If SMTP not configured: copy link from backend terminal
+5. Open the verification link
+6. Return to login page and sign in with same email/password
+7. You should now see the basic **Profile** page
 
-1. **Commit your changes**:
-   ```bash
-   git add .
-   git commit -m "Initial deployment"
-   ```
+### Expected behavior:
+- Non-`@virginia.edu` email is rejected
+- Unverified users cannot log in
+- Verified users can log in and access profile
 
-2. **Push to Heroku**:
-   ```bash
-   git push heroku main
-   ```
+---
 
-   Heroku will:
-   - Install dependencies
-   - Run `heroku-postbuild` script (builds React app with Vite)
-   - Compile TypeScript backend
-   - Start the server using the `Procfile`
+## 8) Current auth API endpoints
 
-3. **Initialize database schema** (first time only):
-   ```bash
-   heroku pg:psql < server/schema.sql
-   ```
-
-4. **Open your app**:
-   ```bash
-   heroku open
-   ```
-
-### Useful Heroku Commands
-
-```bash
-# View logs
-heroku logs --tail
-
-# Check database info
-heroku pg:info
-
-# Connect to database
-heroku pg:psql
-
-# Restart app
-heroku restart
-
-# View environment variables
-heroku config
-```
-
-## API Endpoints
-
-- `GET /api/health` - Health check endpoint
+- `POST /api/auth/register`
+- `POST /api/auth/resend-verification`
+- `GET /api/auth/verify-email?token=...`
+- `POST /api/auth/login`
+- `GET /api/auth/me` (requires `Authorization: Bearer <jwt>`)
+- `GET /api/health`

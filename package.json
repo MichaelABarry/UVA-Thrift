@@ -1,47 +1,23 @@
 {
-  "name": "uva_thrift",
+  "name": "uva-thrift",
+  "private": true,
   "version": "1.0.0",
-  "description": "",
-  "main": "index.js",
+  "description": "UVA Thrift fullstack monorepo",
+  "workspaces": [
+    "client",
+    "server"
+  ],
   "scripts": {
-    "server": "nodemon --exec ts-node server/index.ts",
-    "client": "cd client && npm run dev",
-    "dev": "concurrently \"npm run server\" \"npm run client\"",
-    "build": "tsc -p . && cd client && npm run build",
-    "start": "node dist/index.js",
-    "heroku-postbuild": "tsc -p . && cd client && npm install --include=dev && npm run build",
-    "test": "echo \"Error: no test specified\" && exit 1"
-  },
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/uva-cs4971-s26/capstone-orange-04.git"
+    "dev": "concurrently -k \"npm run dev -w server\" \"npm run dev -w client\"",
+    "build": "npm run build -w client && npm run build -w server",
+    "start": "npm run start -w server",
+    "heroku-postbuild": "npm run build && npm run migrate:deploy -w server",
+    "lint": "npm run lint -w client && npm run lint -w server"
   },
   "engines": {
-    "node": "22.x",
-    "npm": "11.x"
-  },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
-  "type": "commonjs",
-  "bugs": {
-    "url": "https://github.com/uva-cs4971-s26/capstone-orange-04/issues"
-  },
-  "homepage": "https://github.com/uva-cs4971-s26/capstone-orange-04#readme",
-  "dependencies": {
-    "cors": "^2.8.6",
-    "dotenv": "^17.3.1",
-    "express": "^5.2.1",
-    "pg": "^8.18.0"
+    "node": ">=20"
   },
   "devDependencies": {
-    "@types/cors": "^2.8.19",
-    "@types/express": "^5.0.6",
-    "@types/node": "^25.2.3",
-    "@types/pg": "^8.16.0",
-    "concurrently": "^9.2.1",
-    "nodemon": "^3.1.11",
-    "ts-node": "^10.9.2",
-    "typescript": "^5.9.3"
+    "concurrently": "^9.2.1"
   }
 }

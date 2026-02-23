@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # Dependencies
 node_modules/
 /.pnp
@@ -23,7 +24,39 @@ yarn-debug.log*
 yarn-error.log*
 
 # IDE
+=======
+# dependencies
+node_modules/
+
+# env files
+.env
+.env.*
+!.env.example
+!**/.env.example
+
+# build outputs
+dist/
+build/
+coverage/
+
+# logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+*.log
+
+# OS/editor
+.DS_Store
+>>>>>>> 593df83c114b264aaf1de676ff5e41ee6b6327a4
 .vscode/
 .idea/
 *.swp
 *.swo
+<<<<<<< HEAD
+=======
+
+# temp
+.tmp/
+tmp/
+>>>>>>> 593df83c114b264aaf1de676ff5e41ee6b6327a4
