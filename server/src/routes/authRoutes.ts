@@ -2,7 +2,6 @@ import { Router } from 'express';
 import {
   login,
   logout,
-  me,
   profile,
   register,
   resendVerification,
@@ -15,8 +14,7 @@ export const authRouter = Router();
 
 authRouter.post('/register', asyncHandler(register));
 authRouter.post('/login', asyncHandler(login));
-authRouter.post('/logout', asyncHandler(logout));
-authRouter.get('/me', asyncHandler(me));
 authRouter.post('/verify-email', asyncHandler(verifyEmail));
 authRouter.post('/resend-verification', asyncHandler(resendVerification));
 authRouter.get('/profile', asyncHandler(requireVerifiedEmail), asyncHandler(profile));
+authRouter.post('/logout', asyncHandler(logout));

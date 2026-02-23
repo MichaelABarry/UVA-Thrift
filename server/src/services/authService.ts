@@ -12,154 +12,186 @@ import {
 import { generateToken, hashToken } from '../utils/crypto';
 import { sendVerificationEmail } from './emailService';
 
+// Schema for validating registration and login input. It requires an email that must be in a valid format, and a password that must be between 8 and 72 characters long.
 const authSchema = z.object({
-  email: z.string().email(),
-  password: z.string().min(8).max(72)
+    email: z.string().email(),
+    password: z.string().min(8).max(72)
 });
 
-const SESSION_DURATION_MS = 1000 * 60 * 60 * 24 * 7;
-const VERIFICATION_DURATION_MS = 1000 * 60 * 30;
-const ALLOWED_REGISTRATION_DOMAIN = '@virginia.edu';
-
+// Service function to handle user registration. It validates the input, checks for existing users, creates a new user, and issues a verification email.
 export async function registerUser(input: unknown) {
-  const parsed = authSchema.parse(input);
-  const normalizedEmail = parsed.email.toLowerCase().trim();
 
-  if (!normalizedEmail.endsWith(ALLOWED_REGISTRATION_DOMAIN)) {
-    throw new HttpError('Registration is limited to @virginia.edu email addresses.', 400);
-  }
+    // Extract email and password from the input.
+    const parsed = authSchema.parse(input);
+    const normalizedEmail = parsed.email.toLowerCase().trim();
 
-  const existing = await findUserByEmail(normalizedEmail);
-  if (existing) {
-    throw new HttpError('Email is already registered.', 409);
-  }
+    // Enforce that only @virginia.edu email addresses can register.
+    if (!normalizedEmail.endsWith('@virginia.edu')) {
+        throw new HttpError('Registration is limited to @virginia.edu email addresses.', 400);
+    }
 
-  const passwordHash = await hashPassword(parsed.password);
-  const user = await createUser(normalizedEmail, passwordHash);
+    // Check if a user with the same email already exists. If so, throw an error to prevent duplicate accounts.
+    const existing = await findUserByEmail(normalizedEmail);
+    if (existing) {
+        throw new HttpError('Email is already registered.', 409);
+    }
 
-  await issueVerificationEmail(user.id, user.email);
+    // Hash the password and create a new user record in the database.
+    const passwordHash = await hashPassword(parsed.password);
+    const user = await createUser(normalizedEmail, passwordHash);
 
-  return {
-    id: user.id,
-    email: user.email,
-    isEmailVerified: user.is_email_verified
-  };
-}
-
-export async function loginUser(input: unknown) {
-  const parsed = authSchema.parse(input);
-  const normalizedEmail = parsed.email.toLowerCase().trim();
-
-  const user = await findUserByEmail(normalizedEmail);
-  if (!user) {
-    throw new HttpError('Invalid email or password.', 401);
-  }
-
-  const validPassword = await comparePassword(parsed.password, user.password_hash);
-  if (!validPassword) {
-    throw new HttpError('Invalid email or password.', 401);
-  }
-
-  if (!user.is_email_verified) {
+    // Issue a verification email to the user. This will create a verification token in the database and send an email with the token.
     await issueVerificationEmail(user.id, user.email);
+
     return {
-      requiresVerification: true,
-      user: {
         id: user.id,
         email: user.email,
         isEmailVerified: user.is_email_verified
-      }
     };
-  }
-
-  const session = await createSession(user.id, new Date(Date.now() + SESSION_DURATION_MS));
-
-  return {
-    requiresVerification: false,
-    sessionId: session.id,
-    user: {
-      id: user.id,
-      email: user.email,
-      isEmailVerified: user.is_email_verified
-    }
-  };
 }
 
+// Service function to handle user login. It validates the input, checks the user's credentials, and if successful, creates a session and returns the session ID and user information. 
+// If the email is not verified, it will issue a new verification email instead of creating a session.
+export async function loginUser(input: unknown) {
+
+    // Extract email and password from the input.
+    const parsed = authSchema.parse(input);
+    const normalizedEmail = parsed.email.toLowerCase().trim();
+
+    // Find the user by email. If the user does not exist, throw an error.
+    const user = await findUserByEmail(normalizedEmail);
+    if (!user) {
+        throw new HttpError('Invalid email or password.', 401);
+    }
+
+    // Validate the password. If the password is incorrect, throw an error.
+    const validPassword = await comparePassword(parsed.password, user.password_hash);
+    if (!validPassword) {
+        throw new HttpError('Invalid email or password.', 401);
+    }
+
+    // Check if the user's email is verified. If not, issue a verification email.
+    if (!user.is_email_verified) {
+        await issueVerificationEmail(user.id, user.email);
+        return {
+            requiresVerification: true,
+            user: {
+                id: user.id,
+                email: user.email,
+                isEmailVerified: user.is_email_verified
+            }
+        };
+    }
+
+    // Create a new session for the user and return the session ID and user information.
+    const session = await createSession(user.id, new Date(Date.now() + 604_800_000));
+
+    return {
+        requiresVerification: false,
+        sessionId: session.id,
+        user: {
+            id: user.id,
+            email: user.email,
+            isEmailVerified: user.is_email_verified
+        }
+    };
+}
+
+// Service function to handle user logout. It deletes the user's session from the database.
 export async function logoutUser(sessionId: string | undefined) {
-  if (!sessionId) {
-    return;
-  }
-  await deleteSession(sessionId);
-}
-
-export async function getCurrentUserFromSession(sessionId: string | undefined) {
-  if (!sessionId) {
-    return null;
-  }
-
-  const session = await getValidSessionById(sessionId);
-  if (!session) {
-    return null;
-  }
-
-  const user = await findUserById(session.user_id);
-  if (!user) {
-    return null;
-  }
-
-  return {
-    sessionId: session.id,
-    user: {
-      id: user.id,
-      email: user.email,
-      isEmailVerified: user.is_email_verified
+    if (!sessionId) {
+        return;
     }
-  };
+    await deleteSession(sessionId);
 }
 
+// Service function to get the current user from a session ID. It checks if the session is valid and retrieves the associated user information. If the session is invalid or expired, it returns null.
+export async function getCurrentUserFromSession(sessionId: string | undefined) {
+
+    // If no sessionId is passed, there is no session, so return null.
+    if (!sessionId) {
+        return null;
+    }
+
+    // Look up the session in the database and ensure it is valid (exists and not expired). If the session is invalid, return null.
+    const session = await getValidSessionById(sessionId);
+    if (!session) {
+        return null;
+    }
+
+    // Look up the user associated with the session. If the user does not exist, return null.
+    const user = await findUserById(session.user_id);
+    if (!user) {
+        return null;
+    }
+
+    return {
+        sessionId: session.id,
+        user: {
+            id: user.id,
+            email: user.email,
+            isEmailVerified: user.is_email_verified
+        }
+    };
+}
+
+// Service function to verify an email using a verification token. It checks if the token is valid, marks it as used, verifies the user's email, and returns the updated user information. 
+// If the token is invalid or expired, it throws an error.
 export async function verifyEmailToken(rawToken: string) {
-  const hashed = hashToken(rawToken);
-  const tokenRecord = await getValidVerificationToken(hashed);
 
-  if (!tokenRecord) {
-    throw new HttpError('Verification token is invalid or expired.', 400);
-  }
+    // Hash the raw token and look up a valid verification token in the database. A valid token is one that matches the hash, has not been used, and has not expired. If no valid token is found, throw an error.
+    const hashed = hashToken(rawToken);
+    const tokenRecord = await getValidVerificationToken(hashed);
 
-  await markVerificationTokenUsed(tokenRecord.id);
-  await invalidateUserVerificationTokens(tokenRecord.user_id);
+    // If there is no matching token, or if the token has already been used or expired, throw an error indicating that the token is invalid or expired.
+    if (!tokenRecord) {
+        throw new HttpError('Verification token is invalid or expired.', 400);
+    }
 
-  const verifiedUser = await markUserEmailVerified(tokenRecord.user_id);
-  if (!verifiedUser) {
-    throw new HttpError('Unable to verify user.', 500);
-  }
+    // If the token is valid, mark it as used and invalidate any other unused tokens for the same user.
+    await markVerificationTokenUsed(tokenRecord.id);
+    await invalidateUserVerificationTokens(tokenRecord.user_id);
 
-  return {
-    id: verifiedUser.id,
-    email: verifiedUser.email,
-    isEmailVerified: verifiedUser.is_email_verified
-  };
+    // Mark the user's email as verified and return the updated user information. If the user cannot be verified for some reason, throw an error.
+    const verifiedUser = await markUserEmailVerified(tokenRecord.user_id);
+    if (!verifiedUser) {
+        throw new HttpError('Unable to verify user.', 500);
+    }
+
+    return {
+        id: verifiedUser.id,
+        email: verifiedUser.email,
+        isEmailVerified: verifiedUser.is_email_verified
+    };
 }
 
+// Service function to resend a verification email. It checks if the user exists and if their email is not already verified. If both conditions are true, it issues a new verification email.
 export async function resendVerificationEmail(email: string) {
-  const normalizedEmail = email.toLowerCase().trim();
-  const user = await findUserByEmail(normalizedEmail);
 
-  if (!user) {
-    return;
-  }
+    // Check if a user with the given email exists.
+    const normalizedEmail = email.toLowerCase().trim();
+    const user = await findUserByEmail(normalizedEmail);
 
-  if (user.is_email_verified) {
-    return;
-  }
+    // If the user does not exist, do nothing.
+    if (!user) {
+        return;
+    }
 
-  await issueVerificationEmail(user.id, user.email);
+    // If the user's email is already verified, do nothing.
+    if (user.is_email_verified) {
+        return;
+    }
+
+    // If the user exists and their email is not verified, issue a new verification email. This will create a new verification token in the database and send an email with the token.
+    await issueVerificationEmail(user.id, user.email);
 }
 
+// Helper function to issue a verification email. It generates a verification token valid for 30 minutes, stores it in the database, and sends an email to the user with the token.
 async function issueVerificationEmail(userId: string, email: string) {
-  const rawToken = generateToken();
-  const hashedToken = hashToken(rawToken);
-  const expiresAt = new Date(Date.now() + VERIFICATION_DURATION_MS);
+    const rawToken = generateToken();
+    const hashedToken = hashToken(rawToken);
+    const expiresAt = new Date(Date.now() + 1_800_000);
 
-  await createVerificationToken(userId, hashedToken, expiresAt);
-  await sendVerificationEmail(email, rawToken);
+    await createVerificationToken(userId, hashedToken, expiresAt);
+    await sendVerificationEmail(email, rawToken);
 }
