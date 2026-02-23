@@ -9,6 +9,7 @@
     "start": "node dist/index.js",
     "db:reset": "tsx src/db/reset.ts",
     "migrate": "tsx src/db/migrate.ts",
+    "migrate:deploy": "node dist/db/migrate.js",
     "lint": "tsc --noEmit"
   },
   "dependencies": {

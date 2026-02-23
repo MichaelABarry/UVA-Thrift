@@ -45,11 +45,12 @@ cd client && npm install && cd ..
 
 ## 3) Create local PostgreSQL database
 
-Make sure the `createdb` binary is added to $PATH
+Make sure the `createdb-18` binary is added to $PATH
 
 ```bash
-createdb uva_thrift_dev
+createdb-18 uva_thrift_dev
 psql uva_thrift_dev < server/schema.sql
+cd server && npm run migrate
 ```
 
 ---
