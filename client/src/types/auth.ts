@@ -1,10 +1,10 @@
 export type User = {
-  id: string;
-  email: string;
-  isEmailVerified: boolean;
+    id: string;
+    email: string;
+    isEmailVerified: boolean;
 };
 
 export type AuthState = {
-  user: User | null;
-  loading: boolean;
+    user: User | null;
+    loading: boolean;
 };
