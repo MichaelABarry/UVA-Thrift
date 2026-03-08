@@ -6,10 +6,13 @@ import type { Listing } from '../types/listing';
 
 const DESCRIPTION_PREVIEW_LENGTH = 140;
 
+type SortOption = 'price-asc' | 'price-desc' | 'date-asc' | 'date-desc';
+
 export function HomePage() {
     const { user, loading } = useAuth();
     const [listings, setListings] = useState<Listing[]>([]);
     const [searchQuery, setSearchQuery] = useState('');
+    const [sortOption, setSortOption] = useState<SortOption>('date-desc');
     const [loadingListings, setLoadingListings] = useState(true);
     const [error, setError] = useState<string | null>(null);
 
@@ -53,6 +56,31 @@ export function HomePage() {
 
     const hasFilteredListings = useMemo(() => filteredListings.length > 0, [filteredListings.length]);
 
+    const sortedFilteredListings = useMemo(() => {
+        const sorted = [...filteredListings];
+
+        sorted.sort((a, b) => {
+            if (sortOption === 'price-asc') {
+                return a.price - b.price;
+            }
+
+            if (sortOption === 'price-desc') {
+                return b.price - a.price;
+            }
+
+            const aTime = new Date(a.createdAt).getTime();
+            const bTime = new Date(b.createdAt).getTime();
+
+            if (sortOption === 'date-asc') {
+                return aTime - bTime;
+            }
+
+            return bTime - aTime;
+        });
+
+        return sorted;
+    }, [filteredListings, sortOption]);
+
     if (!loading && !user?.isEmailVerified) {
         return <Navigate to="/" replace />;
     }
@@ -84,8 +112,51 @@ export function HomePage() {
                 ) : null}
 
                 {!loadingListings && !error && hasListings && hasFilteredListings ? (
-                    <div className="listing-grid" aria-label="Listings feed">
-                        {filteredListings.map((listing) => {
+                    <div className="home-layout">
+                        <aside className="sort-sidebar" aria-label="Sort listings">
+                            <h2 className="section-heading sort-heading">Sort by</h2>
+                            <div className="sort-options" role="radiogroup" aria-label="Sort options">
+                                <label className="sort-option">
+                                    <input
+                                        type="radio"
+                                        name="listing-sort"
+                                        checked={sortOption === 'date-desc'}
+                                        onChange={() => setSortOption('date-desc')}
+                                    />
+                                    <span>Date added: Newest first</span>
+                                </label>
+                                <label className="sort-option">
+                                    <input
+                                        type="radio"
+                                        name="listing-sort"
+                                        checked={sortOption === 'date-asc'}
+                                        onChange={() => setSortOption('date-asc')}
+                                    />
+                                    <span>Date added: Oldest first</span>
+                                </label>
+                                <label className="sort-option">
+                                    <input
+                                        type="radio"
+                                        name="listing-sort"
+                                        checked={sortOption === 'price-asc'}
+                                        onChange={() => setSortOption('price-asc')}
+                                    />
+                                    <span>Price: Low to high</span>
+                                </label>
+                                <label className="sort-option">
+                                    <input
+                                        type="radio"
+                                        name="listing-sort"
+                                        checked={sortOption === 'price-desc'}
+                                        onChange={() => setSortOption('price-desc')}
+                                    />
+                                    <span>Price: High to low</span>
+                                </label>
+                            </div>
+                        </aside>
+
+                        <div className="listing-grid" aria-label="Listings feed">
+                        {sortedFilteredListings.map((listing) => {
                             const descriptionPreview =
                                 listing.description.length > DESCRIPTION_PREVIEW_LENGTH
                                     ? `${listing.description.slice(0, DESCRIPTION_PREVIEW_LENGTH).trimEnd()}...`
@@ -108,6 +179,7 @@ export function HomePage() {
                                 </article>
                             );
                         })}
+                        </div>
                     </div>
                 ) : null}
             </section>
