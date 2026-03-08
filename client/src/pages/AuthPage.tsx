@@ -17,7 +17,7 @@ export function AuthPage() {
     const title = useMemo(() => (mode === 'login' ? 'Log In' : 'Register'), [mode]);
 
     if (!loading && user?.isEmailVerified) {
-        return <Navigate to="/profile" replace />;
+        return <Navigate to="/home" replace />;
     }
 
     async function handleSubmit(event: FormEvent) {
