@@ -17,7 +17,7 @@ export function AuthPage() {
     const title = useMemo(() => (mode === 'login' ? 'Log In' : 'Register'), [mode]);
 
     if (!loading && user?.isEmailVerified) {
-        return <Navigate to="/profile" replace />;
+        return <Navigate to="/home" replace />;
     }
 
     async function handleSubmit(event: FormEvent) {
@@ -62,8 +62,10 @@ export function AuthPage() {
     return (
         <main className="page">
         <section className="card" aria-label="Authentication form">
-            <h1 className="card-title">UVA Thrift</h1>
-            <p className="card-subtitle">{mode === 'login' ? 'Welcome back.' : 'Create your account.'}</p>
+            <div className="auth-brand">
+                <h1 className="auth-brand-title">UVA&nbsp;<span className="auth-brand-accent">Thrift</span></h1>
+                <p className="auth-brand-tagline">Buy, sell &amp; exchange with fellow Hoos</p>
+            </div>
             <h2 className="section-heading">{title}</h2>
 
             <form onSubmit={handleSubmit} className="form-grid">
@@ -84,7 +86,7 @@ export function AuthPage() {
                 minLength={8}
                 required
             />
-            <button className="button" type="submit" disabled={submitting}>
+            <button className="button button-accent" type="submit" disabled={submitting}>
                 {submitting ? 'Please wait...' : title}
             </button>
             </form>
