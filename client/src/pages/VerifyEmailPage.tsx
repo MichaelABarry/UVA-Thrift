@@ -37,7 +37,10 @@ export function VerifyEmailPage() {
     return (
         <main className="page">
         <section className="card" aria-label="Verify email page">
-            <h1 className="card-title">Verify Email</h1>
+            <div className="auth-brand">
+                <h1 className="auth-brand-title">UVA&nbsp;<span className="auth-brand-accent">Thrift</span></h1>
+            </div>
+            <h2 className="section-heading">Verify Email</h2>
             <p className={status === 'error' ? 'status status-error' : 'status status-success'}>{message}</p>
             {status === 'error' ? (
             <Link className="button button-secondary" to="/">

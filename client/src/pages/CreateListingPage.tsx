@@ -57,7 +57,7 @@ export function CreateListingPage() {
         <main className="page page-content">
             <section className="card" aria-label="Create listing page">
                 <h1 className="card-title">Add Item</h1>
-                <p className="card-subtitle">Create a listing for UVA Thrift.</p>
+                <p className="card-subtitle">List something for fellow Hoos to find.</p>
 
                 <form className="form-grid" onSubmit={handleSubmit}>
                     <input
@@ -106,7 +106,7 @@ export function CreateListingPage() {
                         </div>
                     </fieldset>
 
-                    <button className="button" type="submit" disabled={submitting}>
+                    <button className="button button-accent" type="submit" disabled={submitting}>
                         {submitting ? 'Creating...' : 'Create Listing'}
                     </button>
                 </form>
