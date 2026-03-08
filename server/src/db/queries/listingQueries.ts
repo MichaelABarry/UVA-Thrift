@@ -27,3 +27,12 @@ export async function createListing(input: {
 
     return result.rows[0];
 }
+
+export async function findAllListings() {
+    const result = await pool.query<ListingRecord>(
+        `SELECT * FROM listings
+        ORDER BY created_at DESC`
+    );
+
+    return result.rows;
+}
