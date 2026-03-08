@@ -9,6 +9,7 @@ const DESCRIPTION_PREVIEW_LENGTH = 140;
 export function HomePage() {
     const { user, loading } = useAuth();
     const [listings, setListings] = useState<Listing[]>([]);
+    const [searchQuery, setSearchQuery] = useState('');
     const [loadingListings, setLoadingListings] = useState(true);
     const [error, setError] = useState<string | null>(null);
 
@@ -34,6 +35,24 @@ export function HomePage() {
 
     const hasListings = useMemo(() => listings.length > 0, [listings.length]);
 
+    const filteredListings = useMemo(() => {
+        const normalizedQuery = searchQuery.trim().toLowerCase();
+
+        if (!normalizedQuery) {
+            return listings;
+        }
+
+        return listings.filter((listing) => {
+            const inName = listing.name.toLowerCase().includes(normalizedQuery);
+            const inDescription = listing.description.toLowerCase().includes(normalizedQuery);
+            const inCategories = listing.categories.some((category) => category.toLowerCase().includes(normalizedQuery));
+
+            return inName || inDescription || inCategories;
+        });
+    }, [listings, searchQuery]);
+
+    const hasFilteredListings = useMemo(() => filteredListings.length > 0, [filteredListings.length]);
+
     if (!loading && !user?.isEmailVerified) {
         return <Navigate to="/" replace />;
     }
@@ -44,6 +63,15 @@ export function HomePage() {
                 <h1 className="card-title">UVA Thrift</h1>
                 <p className="card-subtitle">All item listings</p>
 
+                <input
+                    className="input search-input"
+                    type="search"
+                    value={searchQuery}
+                    onChange={(event) => setSearchQuery(event.target.value)}
+                    placeholder="Search by name, description, or category"
+                    aria-label="Search listings"
+                />
+
                 {loadingListings ? <p className="profile-message">Loading listings...</p> : null}
                 {error ? <p className="status status-error">{error}</p> : null}
 
@@ -51,9 +79,13 @@ export function HomePage() {
                     <p className="profile-message">No listings yet. Click Add Item to create the first one.</p>
                 ) : null}
 
-                {!loadingListings && !error && hasListings ? (
+                {!loadingListings && !error && hasListings && !hasFilteredListings ? (
+                    <p className="profile-message">No listings match your search.</p>
+                ) : null}
+
+                {!loadingListings && !error && hasListings && hasFilteredListings ? (
                     <div className="listing-grid" aria-label="Listings feed">
-                        {listings.map((listing) => {
+                        {filteredListings.map((listing) => {
                             const descriptionPreview =
                                 listing.description.length > DESCRIPTION_PREVIEW_LENGTH
                                     ? `${listing.description.slice(0, DESCRIPTION_PREVIEW_LENGTH).trimEnd()}...`
