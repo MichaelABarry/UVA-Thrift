@@ -6,6 +6,7 @@ import cors from 'cors';
 import { env } from './config/env';
 import { authRouter } from './routes/authRoutes';
 import { healthRouter } from './routes/healthRoutes';
+import { listingRouter } from './routes/listingRoutes';
 import { errorMiddleware } from './middleware/errorMiddleware';
 
 export function createApp() {
@@ -27,6 +28,7 @@ export function createApp() {
     // Register API routes for health checks and authentication under the '/api' path.
     app.use('/api', healthRouter);
     app.use('/api/auth', authRouter);
+    app.use('/api/listings', listingRouter);
 
     // In production, serve the React frontend from the 'client/dist' directory. 
     // It checks multiple candidate paths to locate the client build output directory, ensuring compatibility with different project structures. 
