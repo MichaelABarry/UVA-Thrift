@@ -8,3 +8,7 @@ export function createListing(payload: CreateListingPayload) {
         expectedStatus: 201
     });
 }
+
+export function getListings() {
+    return apiFetch<{ listings: Listing[] }>('/api/listings');
+}
