@@ -72,11 +72,14 @@ openssl rand -hex 64
 
 ## 5) SMTP setup (required for real email verification)
 
-The app sends verification links by email. To make this **fully functional**, set real SMTP credentials.
+The app sends verification links by email. We use **Brevo** via SMTP.
 
-You need:
-- `POSTMARK_SERVER_TOKEN`
-- `POSTMARK_FROM_EMAIL`
+You'll need to update the .env with the following:
+- `SMTP_HOST` (usually smtp-relay.brevo.com)
+- `SMTP_PORT` (587)
+- `SMTP_USER` (your Brevo login email)
+- `SMTP_PASS` (your Brevo SMTP master password)
+- `SMTP_FROM` (Verified sender email address)
 
 ### Important note for local testing
 
