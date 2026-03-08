@@ -4,9 +4,13 @@ import { useAuth } from '../hooks/useAuth';
 import { getListings } from '../services/listingService';
 import type { Listing } from '../types/listing';
 
-const DESCRIPTION_PREVIEW_LENGTH = 140;
+const DESCRIPTION_PREVIEW_LENGTH = 120;
 
 type SortOption = 'price-asc' | 'price-desc' | 'date-asc' | 'date-desc';
+
+function formatDate(iso: string): string {
+    return new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+}
 
 export function HomePage() {
     const { user, loading } = useAuth();
@@ -125,30 +129,49 @@ export function HomePage() {
     }
 
     return (
-        <main className="page page-content">
-            <section className="card card-wide" aria-label="Home page">
-                <h1 className="card-title">UVA Thrift</h1>
-                <p className="card-subtitle">All item listings</p>
+        <main className="page-content">
+            <div className="page-container">
+                {/* Header */}
+                <div className="home-header">
+                    <h1 className="home-heading">Marketplace</h1>
+                    <p className="home-subheading">
+                        {hasListings
+                            ? `${listings.length} item${listings.length === 1 ? '' : 's'} listed by UVA students`
+                            : 'Browse items listed by UVA students'}
+                    </p>
+                </div>
 
-                <input
-                    className="input search-input"
-                    type="search"
-                    value={searchQuery}
-                    onChange={(event) => setSearchQuery(event.target.value)}
-                    placeholder="Search by name, description, or category"
-                    aria-label="Search listings"
-                />
+                {/* Search */}
+                <div className="home-search-bar">
+                    <input
+                        className="input search-input"
+                        type="search"
+                        value={searchQuery}
+                        onChange={(event) => setSearchQuery(event.target.value)}
+                        placeholder="Search by name, description, or category..."
+                        aria-label="Search listings"
+                    />
+                </div>
 
-                {loadingListings ? <p className="profile-message">Loading listings...</p> : null}
+                {/* Loading / Error */}
+                {loadingListings ? <p className="loading-spinner">Loading listings...</p> : null}
                 {error ? <p className="status status-error">{error}</p> : null}
 
+                {/* Empty state */}
                 {!loadingListings && !error && !hasListings ? (
-                    <p className="profile-message">No listings yet. Click Add Item to create the first one.</p>
+                    <div className="empty-state">
+                        <div className="empty-state-icon">📦</div>
+                        <h2 className="empty-state-title">No listings yet</h2>
+                        <p className="empty-state-body">
+                            Be the first — click <strong>+ Add Item</strong> in the navigation to create a listing.
+                        </p>
+                    </div>
                 ) : null}
 
+                {/* Main layout: sidebar + grid */}
                 {!loadingListings && !error && hasListings ? (
                     <div className="home-layout">
-                        <aside className="sort-sidebar" aria-label="Sort listings">
+                        <aside className="sort-sidebar" aria-label="Sort and filter listings">
                             <h2 className="section-heading sort-heading">Sort by</h2>
                             <div className="sort-options" role="radiogroup" aria-label="Sort options">
                                 <label className="sort-option">
@@ -158,7 +181,7 @@ export function HomePage() {
                                         checked={sortOption === 'date-desc'}
                                         onChange={() => setSortOption('date-desc')}
                                     />
-                                    <span>Date added: Newest first</span>
+                                    <span>Newest first</span>
                                 </label>
                                 <label className="sort-option">
                                     <input
@@ -167,7 +190,7 @@ export function HomePage() {
                                         checked={sortOption === 'date-asc'}
                                         onChange={() => setSortOption('date-asc')}
                                     />
-                                    <span>Date added: Oldest first</span>
+                                    <span>Oldest first</span>
                                 </label>
                                 <label className="sort-option">
                                     <input
@@ -176,7 +199,7 @@ export function HomePage() {
                                         checked={sortOption === 'price-asc'}
                                         onChange={() => setSortOption('price-asc')}
                                     />
-                                    <span>Price: Low to high</span>
+                                    <span>Price: Low → High</span>
                                 </label>
                                 <label className="sort-option">
                                     <input
@@ -185,39 +208,11 @@ export function HomePage() {
                                         checked={sortOption === 'price-desc'}
                                         onChange={() => setSortOption('price-desc')}
                                     />
-                                    <span>Price: High to low</span>
+                                    <span>Price: High → Low</span>
                                 </label>
                             </div>
 
                             <h2 className="section-heading filter-heading">Filters</h2>
-
-                            <label className="sidebar-label" htmlFor="min-price">
-                                Min price
-                            </label>
-                            <input
-                                id="min-price"
-                                className="input sidebar-input"
-                                type="number"
-                                min="0"
-                                step="0.01"
-                                value={minPrice}
-                                onChange={(event) => setMinPrice(event.target.value)}
-                                placeholder="No minimum"
-                            />
-
-                            <label className="sidebar-label" htmlFor="max-price">
-                                Max price
-                            </label>
-                            <input
-                                id="max-price"
-                                className="input sidebar-input"
-                                type="number"
-                                min="0"
-                                step="0.01"
-                                value={maxPrice}
-                                onChange={(event) => setMaxPrice(event.target.value)}
-                                placeholder="No maximum"
-                            />
 
                             <label className="sidebar-label" htmlFor="category-filter">
                                 Category
@@ -236,8 +231,36 @@ export function HomePage() {
                                 ))}
                             </select>
 
+                            <label className="sidebar-label" htmlFor="min-price">
+                                Min price
+                            </label>
+                            <input
+                                id="min-price"
+                                className="input sidebar-input"
+                                type="number"
+                                min="0"
+                                step="0.01"
+                                value={minPrice}
+                                onChange={(event) => setMinPrice(event.target.value)}
+                                placeholder="$0"
+                            />
+
+                            <label className="sidebar-label" htmlFor="max-price">
+                                Max price
+                            </label>
+                            <input
+                                id="max-price"
+                                className="input sidebar-input"
+                                type="number"
+                                min="0"
+                                step="0.01"
+                                value={maxPrice}
+                                onChange={(event) => setMaxPrice(event.target.value)}
+                                placeholder="No max"
+                            />
+
                             <label className="sidebar-label" htmlFor="date-after">
-                                Added on or after
+                                After
                             </label>
                             <input
                                 id="date-after"
@@ -248,7 +271,7 @@ export function HomePage() {
                             />
 
                             <label className="sidebar-label" htmlFor="date-before">
-                                Added on or before
+                                Before
                             </label>
                             <input
                                 id="date-before"
@@ -260,37 +283,40 @@ export function HomePage() {
                         </aside>
 
                         <div className="listing-grid" aria-label="Listings feed">
-                        {!hasFilteredListings ? (
-                            <p className="profile-message">No listings match your current search and filters.</p>
-                        ) : null}
+                            {!hasFilteredListings ? (
+                                <p className="listing-empty">No listings match your current search and filters.</p>
+                            ) : null}
 
-                        {sortedFilteredListings.map((listing) => {
-                            const descriptionPreview =
-                                listing.description.length > DESCRIPTION_PREVIEW_LENGTH
-                                    ? `${listing.description.slice(0, DESCRIPTION_PREVIEW_LENGTH).trimEnd()}...`
-                                    : listing.description;
+                            {sortedFilteredListings.map((listing) => {
+                                const descriptionPreview =
+                                    listing.description.length > DESCRIPTION_PREVIEW_LENGTH
+                                        ? `${listing.description.slice(0, DESCRIPTION_PREVIEW_LENGTH).trimEnd()}...`
+                                        : listing.description;
 
-                            return (
-                                <article className="listing-card" key={listing.id}>
-                                    <div className="listing-header">
-                                        <h2 className="listing-title">{listing.name}</h2>
-                                        <p className="listing-price">${listing.price.toFixed(2)}</p>
-                                    </div>
-                                    <p className="listing-description">{descriptionPreview}</p>
-                                    <div className="listing-categories">
-                                        {listing.categories.map((category) => (
-                                            <span className="listing-category-chip" key={`${listing.id}-${category}`}>
-                                                {category}
-                                            </span>
-                                        ))}
-                                    </div>
-                                </article>
-                            );
-                        })}
+                                return (
+                                    <article className="listing-card" key={listing.id}>
+                                        <div className="listing-header">
+                                            <h2 className="listing-title">{listing.name}</h2>
+                                            <p className="listing-price">${listing.price.toFixed(2)}</p>
+                                        </div>
+                                        <p className="listing-description">{descriptionPreview}</p>
+                                        <div className="listing-footer">
+                                            <div className="listing-categories">
+                                                {listing.categories.map((category) => (
+                                                    <span className="listing-category-chip" key={`${listing.id}-${category}`}>
+                                                        {category}
+                                                    </span>
+                                                ))}
+                                            </div>
+                                            <span className="listing-date">{formatDate(listing.createdAt)}</span>
+                                        </div>
+                                    </article>
+                                );
+                            })}
                         </div>
                     </div>
                 ) : null}
-            </section>
+            </div>
         </main>
     );
 }

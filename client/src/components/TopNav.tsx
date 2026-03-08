@@ -5,12 +5,13 @@ import { logout } from '../services/authService';
 type NavLink = {
     to: string;
     label: string;
+    className?: string;
 };
 
 const LINKS: NavLink[] = [
     { to: '/home', label: 'Home' },
-    { to: '/listings/new', label: '+ Add Item' },
-    { to: '/profile', label: 'Profile' }
+    { to: '/profile', label: 'Profile' },
+    { to: '/listings/new', label: '+ Add Item', className: 'nav-btn-add' }
 ];
 
 export function TopNav() {
@@ -25,21 +26,24 @@ export function TopNav() {
     return (
         <header className="top-nav" aria-label="Top navigation">
             <div className="top-nav-inner">
-                <p className="top-nav-brand">UVA Thrift</p>
+                <Link to="/home" className="top-nav-brand">
+                    UVA&nbsp;<span className="top-nav-brand-accent">Thrift</span>
+                </Link>
                 <nav className="top-nav-links">
                     {LINKS.map((link) => {
                         const isActive = location.pathname === link.to;
+                        const extra = link.className ?? '';
                         return (
                             <Link
                                 key={link.to}
                                 to={link.to}
-                                className={`button button-secondary nav-link ${isActive ? 'nav-link-active' : ''}`}
+                                className={`button nav-link ${extra} ${isActive ? 'nav-link-active' : ''}`}
                             >
                                 {link.label}
                             </Link>
                         );
                     })}
-                    <button className="button" type="button" onClick={handleLogout}>
+                    <button className="button nav-btn-logout" type="button" onClick={handleLogout}>
                         Log Out
                     </button>
                 </nav>
