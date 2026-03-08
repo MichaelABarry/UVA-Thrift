@@ -100,6 +100,10 @@ textarea.input {
   box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.14);
 }
 
+.search-input {
+  margin-bottom: 0.9rem;
+}
+
 .button {
   border: 1px solid transparent;
   border-radius: 10px;
@@ -236,6 +240,53 @@ a.button {
   gap: 0.75rem;
 }
 
+.home-layout {
+  display: grid;
+  grid-template-columns: 230px minmax(0, 1fr);
+  gap: 1rem;
+  align-items: start;
+}
+
+.sort-sidebar {
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 0.85rem;
+  background: #ffffff;
+}
+
+.sort-heading {
+  margin-bottom: 0.55rem;
+}
+
+.filter-heading {
+  margin: 0.95rem 0 0.55rem;
+}
+
+.sort-options {
+  display: grid;
+  gap: 0.55rem;
+  margin-bottom: 0.35rem;
+}
+
+.sort-option {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  color: #334155;
+}
+
+.sidebar-label {
+  display: block;
+  margin: 0.55rem 0 0.25rem;
+  font-size: 0.88rem;
+  color: #334155;
+}
+
+.sidebar-input {
+  font-size: 0.9rem;
+  padding: 0.56rem 0.7rem;
+}
+
 .listing-card {
   border: 1px solid #e2e8f0;
   border-radius: 12px;
@@ -280,4 +331,10 @@ a.button {
   padding: 0.2rem 0.55rem;
   font-size: 0.8rem;
   color: #334155;
+}
+
+@media (max-width: 860px) {
+  .home-layout {
+    grid-template-columns: 1fr;
+  }
 }
