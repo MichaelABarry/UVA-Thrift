@@ -51,6 +51,10 @@ a {
   box-shadow: 0 18px 40px rgba(15, 23, 42, 0.08);
 }
 
+.card-wide {
+  max-width: 840px;
+}
+
 .card-title {
   margin: 0;
   font-size: 1.5rem;
@@ -224,5 +228,56 @@ a.button {
   display: flex;
   align-items: center;
   gap: 0.45rem;
+  color: #334155;
+}
+
+.listing-grid {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.listing-card {
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 0.9rem;
+  text-align: left;
+  background: #ffffff;
+}
+
+.listing-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 0.75rem;
+}
+
+.listing-title {
+  margin: 0;
+  font-size: 1.05rem;
+  color: #0f172a;
+}
+
+.listing-price {
+  margin: 0;
+  font-weight: 700;
+  color: #1e293b;
+}
+
+.listing-description {
+  margin: 0.55rem 0;
+  color: #475569;
+}
+
+.listing-categories {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+.listing-category-chip {
+  border: 1px solid #cbd5e1;
+  border-radius: 9999px;
+  padding: 0.2rem 0.55rem;
+  font-size: 0.8rem;
   color: #334155;
 }

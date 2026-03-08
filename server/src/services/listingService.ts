@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { createListing } from '../db/queries/listingQueries';
+import { createListing, findAllListings } from '../db/queries/listingQueries';
 
 const createListingSchema = z.object({
     name: z.string().trim().min(1).max(120),
@@ -32,4 +32,18 @@ export async function createListingForUser(userId: string, input: unknown) {
         categories: listing.categories,
         createdAt: listing.created_at
     };
+}
+
+export async function getAllListings() {
+    const listings = await findAllListings();
+
+    return listings.map((listing) => ({
+        id: listing.id,
+        userId: listing.user_id,
+        name: listing.name,
+        description: listing.description,
+        price: listing.price_cents / 100,
+        categories: listing.categories,
+        createdAt: listing.created_at
+    }));
 }
