@@ -10,7 +10,8 @@
     "db:reset": "tsx src/db/reset.ts",
     "migrate": "tsx src/db/migrate.ts",
     "migrate:deploy": "node dist/db/migrate.js",
-    "lint": "tsc --noEmit"
+    "lint": "tsc --noEmit",
+    "test": "vitest run"
   },
   "dependencies": {
     "bcryptjs": "^2.4.3",
