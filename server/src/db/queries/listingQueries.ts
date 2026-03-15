@@ -7,6 +7,8 @@ export type ListingRecord = {
     description: string;
     price_cents: number;
     categories: string[];
+    image_url: string | null;
+    image_key: string | null;
     created_at: string;
     updated_at: string;
 };
@@ -17,12 +19,14 @@ export async function createListing(input: {
     description: string;
     priceCents: number;
     categories: string[];
+    imageUrl: string | null;
+    imageKey: string | null;
 }) {
     const result = await pool.query<ListingRecord>(
-        `INSERT INTO listings (user_id, name, description, price_cents, categories)
-        VALUES ($1, $2, $3, $4, $5)
+        `INSERT INTO listings (user_id, name, description, price_cents, categories, image_url, image_key)
+        VALUES ($1, $2, $3, $4, $5, $6, $7)
         RETURNING *`,
-        [input.userId, input.name, input.description, input.priceCents, input.categories]
+        [input.userId, input.name, input.description, input.priceCents, input.categories, input.imageUrl, input.imageKey]
     );
 
     return result.rows[0];
@@ -35,4 +39,72 @@ export async function findAllListings() {
     );
 
     return result.rows;
+}
+
+export async function findListingByIdForUser(listingId: string, userId: string) {
+    const result = await pool.query<ListingRecord>(
+        `SELECT * FROM listings
+        WHERE id = $1 AND user_id = $2`,
+        [listingId, userId]
+    );
+
+    return result.rows[0] ?? null;
+}
+
+export async function findListingsByUserId(userId: string) {
+    const result = await pool.query<ListingRecord>(
+        `SELECT * FROM listings
+        WHERE user_id = $1
+        ORDER BY created_at DESC`,
+        [userId]
+    );
+
+    return result.rows;
+}
+
+export async function updateListingById(input: {
+    listingId: string;
+    userId: string;
+    name: string;
+    description: string;
+    priceCents: number;
+    categories: string[];
+    imageUrl: string | null;
+    imageKey: string | null;
+}) {
+    const result = await pool.query<ListingRecord>(
+        `UPDATE listings
+        SET name = $3,
+            description = $4,
+            price_cents = $5,
+            categories = $6,
+            image_url = $7,
+            image_key = $8,
+            updated_at = NOW()
+        WHERE id = $1 AND user_id = $2
+        RETURNING *`,
+        [
+            input.listingId,
+            input.userId,
+            input.name,
+            input.description,
+            input.priceCents,
+            input.categories,
+            input.imageUrl,
+            input.imageKey
+        ]
+    );
+
+    return result.rows[0] ?? null;
+}
+
+export async function deleteListingById(listingId: string, userId: string) {
+    const result = await pool.query<ListingRecord>(
+        `DELETE FROM listings
+        WHERE id = $1 AND user_id = $2
+        RETURNING *`,
+        [listingId, userId]
+    );
+
+    return result.rows[0] ?? null;
 }

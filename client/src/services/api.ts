@@ -6,13 +6,17 @@ type ApiOptions = RequestInit & {
 
 // Generic function to make API requests. It handles JSON responses, checks for expected status codes, and throws errors with messages from the response body when applicable.
 export async function apiFetch<T>(path: string, options: ApiOptions = {}): Promise<T> {
+    const isFormData = options.body instanceof FormData;
+
     const response = await fetch(`${API_BASE_URL}${path}`, {
         ...options,
         credentials: 'include',
-        headers: {
-        'Content-Type': 'application/json',
-        ...(options.headers ?? {})
-        }
+        headers: isFormData
+            ? options.headers
+            : {
+                'Content-Type': 'application/json',
+                ...(options.headers ?? {})
+            }
     });
 
     if (options.expectedStatus && response.status !== options.expectedStatus) {
@@ -23,6 +27,10 @@ export async function apiFetch<T>(path: string, options: ApiOptions = {}): Promi
     if (!response.ok) {
         const body = await safeParseBody(response);
         throw new Error(body?.message || 'Request failed.');
+    }
+
+    if (response.status === 204) {
+        return undefined as T;
     }
 
     return response.json() as Promise<T>;
