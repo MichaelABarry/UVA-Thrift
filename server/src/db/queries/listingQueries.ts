@@ -7,6 +7,8 @@ export type ListingRecord = {
     description: string;
     price_cents: number;
     categories: string[];
+    image_url: string | null;
+    image_key: string | null;
     created_at: string;
     updated_at: string;
 };
@@ -17,12 +19,14 @@ export async function createListing(input: {
     description: string;
     priceCents: number;
     categories: string[];
+    imageUrl: string | null;
+    imageKey: string | null;
 }) {
     const result = await pool.query<ListingRecord>(
-        `INSERT INTO listings (user_id, name, description, price_cents, categories)
-        VALUES ($1, $2, $3, $4, $5)
+        `INSERT INTO listings (user_id, name, description, price_cents, categories, image_url, image_key)
+        VALUES ($1, $2, $3, $4, $5, $6, $7)
         RETURNING *`,
-        [input.userId, input.name, input.description, input.priceCents, input.categories]
+        [input.userId, input.name, input.description, input.priceCents, input.categories, input.imageUrl, input.imageKey]
     );
 
     return result.rows[0];
@@ -65,6 +69,8 @@ export async function updateListingById(input: {
     description: string;
     priceCents: number;
     categories: string[];
+    imageUrl: string | null;
+    imageKey: string | null;
 }) {
     const result = await pool.query<ListingRecord>(
         `UPDATE listings
@@ -72,10 +78,21 @@ export async function updateListingById(input: {
             description = $4,
             price_cents = $5,
             categories = $6,
+            image_url = $7,
+            image_key = $8,
             updated_at = NOW()
         WHERE id = $1 AND user_id = $2
         RETURNING *`,
-        [input.listingId, input.userId, input.name, input.description, input.priceCents, input.categories]
+        [
+            input.listingId,
+            input.userId,
+            input.name,
+            input.description,
+            input.priceCents,
+            input.categories,
+            input.imageUrl,
+            input.imageKey
+        ]
     );
 
     return result.rows[0] ?? null;

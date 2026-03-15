@@ -7,6 +7,7 @@ declare global {
         interface Request {
             user?: UserRecord;
             sessionId?: string;
+            file?: Multer.File;
         }
     }
 }

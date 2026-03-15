@@ -87,7 +87,128 @@ For local testing, you can leave these values as-is and the backend server will 
 
 ---
 
-## 6) Start the app locally
+## 6) Connect the app to an S3 bucket for listing images
+
+The backend uploads listing images to S3 and stores the resulting image URL in the database. To make that work, you need all of the following:
+
+### A. Create an S3 bucket
+
+1. Sign in to AWS and open S3.
+2. Create a bucket in the region you want to use.
+3. Keep the bucket name and region. You will place both into `server/.env`.
+
+### B. Make uploaded images publicly viewable
+
+The frontend displays images using direct URLs returned by the backend, so uploaded objects must be publicly readable.
+
+You have two supported options:
+
+1. Use a public S3 bucket and let the app build URLs like `https://<bucket>.s3.<region>.amazonaws.com/<key>`.
+2. Use CloudFront or another public CDN/domain in front of the bucket and set `S3_PUBLIC_BASE_URL` to that public base URL.
+
+If you use a public bucket directly, add a bucket policy like this and replace `YOUR_BUCKET_NAME` with your actual bucket name:
+
+```json
+{
+   "Version": "2012-10-17",
+   "Statement": [
+      {
+         "Sid": "PublicReadForListingImages",
+         "Effect": "Allow",
+         "Principal": "*",
+         "Action": "s3:GetObject",
+         "Resource": "arn:aws:s3:::YOUR_BUCKET_NAME/*"
+      }
+   ]
+}
+```
+
+If your bucket has Block Public Access fully enabled, this public-read approach will not work until you adjust that setting or serve the files through CloudFront instead.
+
+### C. Create AWS credentials for the backend
+
+The server uses the AWS SDK default credential chain. For local development, the simplest approach is environment variables.
+
+Create an IAM user or role with permission to upload and delete objects in your bucket. At minimum, the backend needs:
+
+```json
+{
+   "Version": "2012-10-17",
+   "Statement": [
+      {
+         "Effect": "Allow",
+         "Action": [
+            "s3:PutObject",
+            "s3:DeleteObject"
+         ],
+         "Resource": "arn:aws:s3:::YOUR_BUCKET_NAME/*"
+      }
+   ]
+}
+```
+
+For local development, expose these credentials to the server process with standard AWS environment variables:
+
+- `AWS_ACCESS_KEY_ID`
+- `AWS_SECRET_ACCESS_KEY`
+- `AWS_SESSION_TOKEN` if you are using temporary credentials
+
+### D. Add the S3 settings to `server/.env`
+
+In `server/.env`, add:
+
+```env
+AWS_REGION=us-east-1
+S3_BUCKET_NAME=your-bucket-name
+S3_PUBLIC_BASE_URL=https://your-bucket-name.s3.us-east-1.amazonaws.com
+```
+
+Notes:
+
+- `AWS_REGION` is required.
+- `S3_BUCKET_NAME` is required.
+- `S3_PUBLIC_BASE_URL` is optional. If you leave it out, the backend will generate public URLs in the format `https://<bucket>.s3.<region>.amazonaws.com/<key>`.
+- `S3_PUBLIC_BASE_URL` should point to a public URL that browsers can load, such as a CloudFront distribution or a public S3 bucket endpoint.
+
+### E. Make sure your AWS credentials are available when the server runs
+
+One workable local setup is exporting them in the shell before starting the app:
+
+```bash
+export AWS_ACCESS_KEY_ID=your_access_key_id
+export AWS_SECRET_ACCESS_KEY=your_secret_access_key
+# only if needed
+export AWS_SESSION_TOKEN=your_session_token
+```
+
+Then start the app normally:
+
+```bash
+npm run dev
+```
+
+### F. Run the listing image migration
+
+If your database already existed before image support was added, run the server migration again so the `listings` table gets the `image_url` and `image_key` columns:
+
+```bash
+cd server
+npm run migrate
+```
+
+### G. Verify it works
+
+1. Start the app.
+2. Log in with a verified UVA account.
+3. Create a listing and choose an image file.
+4. Submit the listing.
+5. Confirm the image appears on the marketplace page and in My Items.
+
+If listing creation fails with `Listing image uploads are not configured.`, the server is missing `AWS_REGION` or `S3_BUCKET_NAME`.
+
+---
+
+## 7) Start the app locally
 
 ```bash
 npm run dev
@@ -99,7 +220,7 @@ This starts:
 
 ---
 
-## 7) Test the full login flow (exact steps)
+## 8) Test the full login flow (exact steps)
 
 1. Open `http://localhost:5173`
 2. Click **Register**
@@ -118,7 +239,7 @@ This starts:
 
 ---
 
-## 8) Current auth API endpoints
+## 9) Current auth API endpoints
 
 - `POST /api/auth/register`
 - `POST /api/auth/resend-verification`

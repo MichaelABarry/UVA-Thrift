@@ -61,4 +61,25 @@ describe('apiFetch', () => {
 
         await expect(apiFetch<void>('/api/listings/123', { method: 'DELETE', expectedStatus: 204 })).resolves.toBeUndefined();
     });
+
+    it('omits the JSON content type header for FormData requests', async () => {
+        fetchMock.mockResolvedValue(
+            new Response(JSON.stringify({ listing: { id: 'listing-1' } }), {
+                status: 200,
+                headers: { 'Content-Type': 'application/json' }
+            })
+        );
+
+        const body = new FormData();
+        body.append('name', 'Desk Lamp');
+
+        await apiFetch('/api/listings', { method: 'POST', body });
+
+        expect(fetchMock.mock.calls[0]?.[1]).toEqual({
+            method: 'POST',
+            body,
+            credentials: 'include',
+            headers: undefined
+        });
+    });
 });

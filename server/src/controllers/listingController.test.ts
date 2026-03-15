@@ -69,12 +69,13 @@ describe('listingController', () => {
     it('creates a listing for the authenticated user', async () => {
         const response = createResponse();
         const listing = { id: 'listing-1' };
+        const file = { originalname: 'lamp.png' } as Express.Multer.File;
 
         mockedCreateListingForUser.mockResolvedValue(listing as never);
 
-        await createListing({ user: { id: 'user-1' }, body: { name: 'Desk Lamp' } } as Request, response);
+        await createListing({ user: { id: 'user-1' }, body: { name: 'Desk Lamp' }, file } as Request, response);
 
-        expect(mockedCreateListingForUser).toHaveBeenCalledWith('user-1', { name: 'Desk Lamp' });
+        expect(mockedCreateListingForUser).toHaveBeenCalledWith('user-1', { name: 'Desk Lamp' }, file);
         expect(response.status).toHaveBeenCalledWith(201);
         expect(response.json).toHaveBeenCalledWith({ listing });
     });
@@ -121,15 +122,16 @@ describe('listingController', () => {
         const response = createResponse();
         const listing = { id: 'listing-1' };
         const body = { name: 'Updated Lamp' };
+        const file = { originalname: 'lamp.png' } as Express.Multer.File;
 
         mockedUpdateListingForUser.mockResolvedValue(listing as never);
 
         await updateMyListing(
-            { user: { id: 'user-1' }, params: { listingId: 'listing-1' }, body } as unknown as Request,
+            { user: { id: 'user-1' }, params: { listingId: 'listing-1' }, body, file } as unknown as Request,
             response
         );
 
-        expect(mockedUpdateListingForUser).toHaveBeenCalledWith('user-1', 'listing-1', body);
+        expect(mockedUpdateListingForUser).toHaveBeenCalledWith('user-1', 'listing-1', body, file);
         expect(response.status).toHaveBeenCalledWith(200);
         expect(response.json).toHaveBeenCalledWith({ listing });
     });
