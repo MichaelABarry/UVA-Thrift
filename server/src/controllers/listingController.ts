@@ -14,7 +14,7 @@ export async function createListing(req: Request, res: Response) {
         throw new HttpError('Unauthorized.', 401);
     }
 
-    const listing = await createListingForUser(req.user.id, req.body);
+    const listing = await createListingForUser(req.user.id, req.body, req.file);
     return res.status(201).json({ listing });
 }
 
@@ -46,7 +46,7 @@ export async function updateMyListing(req: Request, res: Response) {
         throw new HttpError('Unauthorized.', 401);
     }
 
-    const listing = await updateListingForUser(req.user.id, req.params.listingId, req.body);
+    const listing = await updateListingForUser(req.user.id, req.params.listingId, req.body, req.file);
     return res.status(200).json({ listing });
 }
 
