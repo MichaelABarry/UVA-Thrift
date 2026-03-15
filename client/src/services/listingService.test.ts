@@ -21,22 +21,31 @@ describe('listingService', () => {
     });
 
     it('creates a listing with the expected request payload', async () => {
+        const image = new File(['lamp'], 'lamp.png', { type: 'image/png' });
         const payload = {
             name: 'Desk Lamp',
             description: 'Great for dorms',
             price: 18.5,
-            categories: ['electronics']
+            categories: ['electronics'],
+            image
         };
 
         mockedApiFetch.mockResolvedValue({ listing: { id: '1' } } as never);
 
         await createListing(payload);
 
-        expect(mockedApiFetch).toHaveBeenCalledWith('/api/listings', {
-            method: 'POST',
-            body: JSON.stringify(payload),
-            expectedStatus: 201
-        });
+        expect(mockedApiFetch).toHaveBeenCalledTimes(1);
+        expect(mockedApiFetch.mock.calls[0]?.[0]).toBe('/api/listings');
+        expect(mockedApiFetch.mock.calls[0]?.[1]?.method).toBe('POST');
+        expect(mockedApiFetch.mock.calls[0]?.[1]?.expectedStatus).toBe(201);
+        expect(mockedApiFetch.mock.calls[0]?.[1]?.body).toBeInstanceOf(FormData);
+
+        const formData = mockedApiFetch.mock.calls[0]?.[1]?.body as FormData;
+        expect(formData.get('name')).toBe('Desk Lamp');
+        expect(formData.get('description')).toBe('Great for dorms');
+        expect(formData.get('price')).toBe('18.5');
+        expect(formData.get('categories')).toBe('["electronics"]');
+        expect(formData.get('image')).toBe(image);
     });
 
     it('retrieves all public listings', async () => {
@@ -64,21 +73,30 @@ describe('listingService', () => {
     });
 
     it('updates a listing with a PUT request', async () => {
+        const image = new File(['lamp'], 'lamp.png', { type: 'image/png' });
         const payload = {
             name: 'Desk Lamp',
             description: 'Updated description',
             price: 22,
-            categories: ['electronics', 'other']
+            categories: ['electronics', 'other'],
+            image
         };
 
         mockedApiFetch.mockResolvedValue({ listing: { id: 'listing-1' } } as never);
 
         await updateListing('listing-1', payload);
 
-        expect(mockedApiFetch).toHaveBeenCalledWith('/api/listings/listing-1', {
-            method: 'PUT',
-            body: JSON.stringify(payload)
-        });
+        expect(mockedApiFetch).toHaveBeenCalledTimes(1);
+        expect(mockedApiFetch.mock.calls[0]?.[0]).toBe('/api/listings/listing-1');
+        expect(mockedApiFetch.mock.calls[0]?.[1]?.method).toBe('PUT');
+        expect(mockedApiFetch.mock.calls[0]?.[1]?.body).toBeInstanceOf(FormData);
+
+        const formData = mockedApiFetch.mock.calls[0]?.[1]?.body as FormData;
+        expect(formData.get('name')).toBe('Desk Lamp');
+        expect(formData.get('description')).toBe('Updated description');
+        expect(formData.get('price')).toBe('22');
+        expect(formData.get('categories')).toBe('["electronics","other"]');
+        expect(formData.get('image')).toBe(image);
     });
 
     it('deletes a listing with the expected status guard', async () => {

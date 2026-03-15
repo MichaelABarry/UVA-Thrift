@@ -93,6 +93,14 @@ export function MyItemsPage() {
                     <div className="listing-grid" aria-label="Your uploaded items">
                         {listings.map((listing) => (
                             <article className="listing-card" key={listing.id}>
+                                {listing.imageUrl ? (
+                                    <div className="listing-image-frame">
+                                        <img className="listing-image" src={listing.imageUrl} alt={listing.name} />
+                                    </div>
+                                ) : (
+                                    <div className="listing-image-placeholder">No image</div>
+                                )}
+
                                 <div className="listing-header">
                                     <h2 className="listing-title">{listing.name}</h2>
                                     <p className="listing-price">${listing.price.toFixed(2)}</p>

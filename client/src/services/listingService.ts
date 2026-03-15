@@ -1,10 +1,24 @@
 import { apiFetch } from './api';
 import type { CreateListingPayload, Listing, UpdateListingPayload } from '../types/listing';
 
+function buildListingFormData(payload: CreateListingPayload | UpdateListingPayload) {
+    const formData = new FormData();
+    formData.append('name', payload.name);
+    formData.append('description', payload.description);
+    formData.append('price', String(payload.price));
+    formData.append('categories', JSON.stringify(payload.categories));
+
+    if (payload.image) {
+        formData.append('image', payload.image);
+    }
+
+    return formData;
+}
+
 export function createListing(payload: CreateListingPayload) {
     return apiFetch<{ listing: Listing }>('/api/listings', {
         method: 'POST',
-        body: JSON.stringify(payload),
+        body: buildListingFormData(payload),
         expectedStatus: 201
     });
 }
@@ -24,7 +38,7 @@ export function getMyListing(listingId: string) {
 export function updateListing(listingId: string, payload: UpdateListingPayload) {
     return apiFetch<{ listing: Listing }>(`/api/listings/${listingId}`, {
         method: 'PUT',
-        body: JSON.stringify(payload)
+        body: buildListingFormData(payload)
     });
 }
 

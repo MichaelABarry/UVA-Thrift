@@ -379,6 +379,51 @@ a.button {
   background: #f8f9fc;
 }
 
+.listing-upload-group {
+  display: grid;
+  gap: 0.6rem;
+}
+
+.listing-upload-label {
+  margin-bottom: 0;
+}
+
+.listing-file-input {
+  padding: 0.6rem 0.75rem;
+}
+
+.listing-upload-hint {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 0.84rem;
+}
+
+.listing-upload-preview,
+.listing-upload-placeholder {
+  border: 1px dashed var(--border);
+  border-radius: var(--radius);
+  background: #fafbfe;
+  overflow: hidden;
+}
+
+.listing-upload-preview {
+  aspect-ratio: 4 / 3;
+}
+
+.listing-upload-preview-image {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.listing-upload-placeholder {
+  padding: 1rem;
+  text-align: center;
+  color: var(--text-muted);
+  font-size: 0.9rem;
+}
+
 /* ──────────────── Home Page Layout ──────────────── */
 
 .home-header {
@@ -522,6 +567,30 @@ a.button {
 .listing-card:hover {
   transform: translateY(-2px);
   box-shadow: var(--shadow);
+}
+
+.listing-image-frame,
+.listing-image-placeholder {
+  width: calc(100% + 2.3rem);
+  margin: -1.15rem -1.15rem 1rem;
+  aspect-ratio: 4 / 3;
+  background: #edf1f7;
+  border-bottom: 1px solid var(--border);
+}
+
+.listing-image {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.listing-image-placeholder {
+  display: grid;
+  place-items: center;
+  color: var(--text-muted);
+  font-size: 0.9rem;
+  font-weight: 500;
 }
 
 .listing-header {
