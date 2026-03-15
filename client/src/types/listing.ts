@@ -14,3 +14,5 @@ export type CreateListingPayload = {
     price: number;
     categories: string[];
 };
+
+export type UpdateListingPayload = CreateListingPayload;

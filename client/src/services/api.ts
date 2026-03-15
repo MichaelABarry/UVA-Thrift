@@ -25,6 +25,10 @@ export async function apiFetch<T>(path: string, options: ApiOptions = {}): Promi
         throw new Error(body?.message || 'Request failed.');
     }
 
+    if (response.status === 204) {
+        return undefined as T;
+    }
+
     return response.json() as Promise<T>;
 }
 
