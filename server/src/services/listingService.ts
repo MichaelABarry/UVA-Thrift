@@ -3,6 +3,7 @@ import {
     createListing,
     deleteListingById,
     findAllListings,
+    findListingById,
     findListingByIdForUser,
     findListingsByUserId,
     type ListingRecord,
@@ -10,6 +11,7 @@ import {
 } from '../db/queries/listingQueries';
 import { deleteListingImage, uploadListingImage } from './storageService';
 import { HttpError } from '../utils/httpError';
+import { notifyUsersAboutNewListing } from './notificationPreferenceService';
 
 const listingSchema = z.object({
     name: z.string().trim().min(1).max(120),
@@ -67,7 +69,15 @@ export async function createListingForUser(userId: string, input: unknown, file?
             imageKey: uploadedImage?.imageKey ?? null
         });
 
-        return toListingResponse(listing);
+        const response = toListingResponse(listing);
+
+        try {
+            await notifyUsersAboutNewListing(response);
+        } catch (error) {
+            console.error('Unable to send listing notification emails:', error);
+        }
+
+        return response;
     } catch (error) {
         if (uploadedImage?.imageKey) {
             await deleteListingImage(uploadedImage.imageKey);
@@ -75,6 +85,16 @@ export async function createListingForUser(userId: string, input: unknown, file?
 
         throw error;
     }
+}
+
+export async function getListingById(listingId: string) {
+    const listing = await findListingById(listingId);
+
+    if (!listing) {
+        throw new HttpError('Listing not found.', 404);
+    }
+
+    return toListingResponse(listing);
 }
 
 export async function getAllListings() {

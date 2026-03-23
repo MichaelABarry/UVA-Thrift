@@ -11,19 +11,26 @@ import {
     createListing,
     deleteListingById,
     findAllListings,
+    findListingById,
     findListingByIdForUser,
     findListingsByUserId,
     updateListingById
 } from '../db/queries/listingQueries';
+import { notifyUsersAboutNewListing } from './notificationPreferenceService';
 import { deleteListingImage, uploadListingImage } from './storageService';
 
 vi.mock('../db/queries/listingQueries', () => ({
     createListing: vi.fn(),
     deleteListingById: vi.fn(),
     findAllListings: vi.fn(),
+    findListingById: vi.fn(),
     findListingByIdForUser: vi.fn(),
     findListingsByUserId: vi.fn(),
     updateListingById: vi.fn()
+}));
+
+vi.mock('./notificationPreferenceService', () => ({
+    notifyUsersAboutNewListing: vi.fn()
 }));
 
 vi.mock('./storageService', () => ({
@@ -62,8 +69,10 @@ describe('server listingService', () => {
     const mockedCreateListing = vi.mocked(createListing);
     const mockedDeleteListingById = vi.mocked(deleteListingById);
     const mockedFindAllListings = vi.mocked(findAllListings);
+    const mockedFindListingById = vi.mocked(findListingById);
     const mockedFindListingByIdForUser = vi.mocked(findListingByIdForUser);
     const mockedFindListingsByUserId = vi.mocked(findListingsByUserId);
+    const mockedNotifyUsersAboutNewListing = vi.mocked(notifyUsersAboutNewListing);
     const mockedUpdateListingById = vi.mocked(updateListingById);
     const mockedDeleteListingImage = vi.mocked(deleteListingImage);
     const mockedUploadListingImage = vi.mocked(uploadListingImage);
@@ -72,8 +81,10 @@ describe('server listingService', () => {
         mockedCreateListing.mockReset();
         mockedDeleteListingById.mockReset();
         mockedFindAllListings.mockReset();
+        mockedFindListingById.mockReset();
         mockedFindListingByIdForUser.mockReset();
         mockedFindListingsByUserId.mockReset();
+        mockedNotifyUsersAboutNewListing.mockReset();
         mockedUpdateListingById.mockReset();
         mockedDeleteListingImage.mockReset();
         mockedUploadListingImage.mockReset();
@@ -110,6 +121,16 @@ describe('server listingService', () => {
             categories: ['electronics', 'other'],
             imageKey: 'listings/lamp.png',
             imageUrl: 'https://bucket.s3.amazonaws.com/listings/lamp.png'
+        });
+        expect(mockedNotifyUsersAboutNewListing).toHaveBeenCalledWith({
+            id: 'listing-1',
+            userId: 'user-1',
+            name: 'Desk Lamp',
+            description: 'Dorm ready lamp',
+            price: 19.99,
+            categories: ['electronics', 'other'],
+            imageUrl: 'https://bucket.s3.amazonaws.com/listings/lamp.png',
+            createdAt: '2026-03-15T12:00:00.000Z'
         });
         expect(result).toEqual({
             id: 'listing-1',
@@ -163,6 +184,20 @@ describe('server listingService', () => {
         expect(mockedFindListingsByUserId).toHaveBeenCalledWith('user-1');
         expect(result).toHaveLength(1);
         expect(result[0]?.userId).toBe('user-1');
+    });
+
+    it('retrieves a single public listing and throws when it is missing', async () => {
+        mockedFindListingById.mockResolvedValueOnce(makeListingRecord());
+        mockedFindListingById.mockResolvedValueOnce(null as never);
+
+        await expect(import('./listingService').then(({ getListingById }) => getListingById('listing-1'))).resolves.toMatchObject({
+            id: 'listing-1',
+            userId: 'user-1'
+        });
+        await expect(import('./listingService').then(({ getListingById }) => getListingById('missing'))).rejects.toMatchObject({
+            message: 'Listing not found.',
+            statusCode: 404
+        });
     });
 
     it('retrieves a single owned listing and throws when it is missing', async () => {
