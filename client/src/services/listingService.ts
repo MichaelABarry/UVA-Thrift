@@ -35,6 +35,10 @@ export function getMyListing(listingId: string) {
     return apiFetch<{ listing: Listing }>(`/api/listings/${listingId}`);
 }
 
+export function getListingDetails(listingId: string) {
+    return apiFetch<{ listing: Listing }>(`/api/listings/details/${listingId}`);
+}
+
 export function updateListing(listingId: string, payload: UpdateListingPayload) {
     return apiFetch<{ listing: Listing }>(`/api/listings/${listingId}`, {
         method: 'PUT',
