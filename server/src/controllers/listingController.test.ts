@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import {
     createListing,
     deleteMyListing,
+    getListingDetails,
     getMyListing,
     listListings,
     listMyListings,
@@ -12,6 +13,7 @@ import {
     createListingForUser,
     deleteListingForUser,
     getAllListings,
+    getListingById,
     getListingForUser,
     getListingsForUser,
     updateListingForUser
@@ -21,6 +23,7 @@ vi.mock('../services/listingService', () => ({
     createListingForUser: vi.fn(),
     deleteListingForUser: vi.fn(),
     getAllListings: vi.fn(),
+    getListingById: vi.fn(),
     getListingForUser: vi.fn(),
     getListingsForUser: vi.fn(),
     updateListingForUser: vi.fn()
@@ -44,6 +47,7 @@ describe('listingController', () => {
     const mockedCreateListingForUser = vi.mocked(createListingForUser);
     const mockedDeleteListingForUser = vi.mocked(deleteListingForUser);
     const mockedGetAllListings = vi.mocked(getAllListings);
+    const mockedGetListingById = vi.mocked(getListingById);
     const mockedGetListingForUser = vi.mocked(getListingForUser);
     const mockedGetListingsForUser = vi.mocked(getListingsForUser);
     const mockedUpdateListingForUser = vi.mocked(updateListingForUser);
@@ -52,6 +56,7 @@ describe('listingController', () => {
         mockedCreateListingForUser.mockReset();
         mockedDeleteListingForUser.mockReset();
         mockedGetAllListings.mockReset();
+        mockedGetListingById.mockReset();
         mockedGetListingForUser.mockReset();
         mockedGetListingsForUser.mockReset();
         mockedUpdateListingForUser.mockReset();
@@ -90,6 +95,19 @@ describe('listingController', () => {
 
         expect(response.status).toHaveBeenCalledWith(200);
         expect(response.json).toHaveBeenCalledWith({ listings });
+    });
+
+    it('retrieves a single public listing', async () => {
+        const response = createResponse();
+        const listing = { id: 'listing-1' };
+
+        mockedGetListingById.mockResolvedValue(listing as never);
+
+        await getListingDetails({ params: { listingId: 'listing-1' } } as unknown as Request, response);
+
+        expect(mockedGetListingById).toHaveBeenCalledWith('listing-1');
+        expect(response.status).toHaveBeenCalledWith(200);
+        expect(response.json).toHaveBeenCalledWith({ listing });
     });
 
     it('lists the current users listings', async () => {
