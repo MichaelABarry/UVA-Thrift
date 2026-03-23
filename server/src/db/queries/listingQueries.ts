@@ -41,6 +41,16 @@ export async function findAllListings() {
     return result.rows;
 }
 
+export async function findListingById(listingId: string) {
+    const result = await pool.query<ListingRecord>(
+        `SELECT * FROM listings
+        WHERE id = $1`,
+        [listingId]
+    );
+
+    return result.rows[0] ?? null;
+}
+
 export async function findListingByIdForUser(listingId: string, userId: string) {
     const result = await pool.query<ListingRecord>(
         `SELECT * FROM listings
