@@ -3,6 +3,7 @@ import { apiFetch } from './api';
 import {
     createListing,
     deleteListing,
+    getListingDetails,
     getListings,
     getMyListing,
     getMyListings,
@@ -70,6 +71,14 @@ describe('listingService', () => {
         await getMyListing('listing-1');
 
         expect(mockedApiFetch).toHaveBeenCalledWith('/api/listings/listing-1');
+    });
+
+    it('retrieves a single marketplace listing detail', async () => {
+        mockedApiFetch.mockResolvedValue({ listing: { id: 'listing-1' } } as never);
+
+        await getListingDetails('listing-1');
+
+        expect(mockedApiFetch).toHaveBeenCalledWith('/api/listings/details/listing-1');
     });
 
     it('updates a listing with a PUT request', async () => {

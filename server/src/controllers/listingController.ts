@@ -4,6 +4,7 @@ import {
     createListingForUser,
     deleteListingForUser,
     getAllListings,
+    getListingById,
     getListingForUser,
     getListingsForUser,
     updateListingForUser
@@ -21,6 +22,11 @@ export async function createListing(req: Request, res: Response) {
 export async function listListings(_req: Request, res: Response) {
     const listings = await getAllListings();
     return res.status(200).json({ listings });
+}
+
+export async function getListingDetails(req: Request, res: Response) {
+    const listing = await getListingById(req.params.listingId);
+    return res.status(200).json({ listing });
 }
 
 export async function listMyListings(req: Request, res: Response) {
