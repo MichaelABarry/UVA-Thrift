@@ -375,6 +375,9 @@ export function HomePage() {
                                         </div>
 
                                         <div className="listing-actions listing-actions-stack">
+                                            <Link className="button listing-action-button" to={`/listings/${listing.id}`}>
+                                                View Details
+                                            </Link>
                                             <button
                                                 className="button button-secondary listing-action-button"
                                                 type="button"

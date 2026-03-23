@@ -216,7 +216,6 @@ export function ListsPage() {
 
                             {!lists.length ? (
                                 <div className="empty-state lists-sidebar-empty">
-                                    <div className="empty-state-icon">🗂️</div>
                                     <h2 className="empty-state-title">No lists yet</h2>
                                     <p className="empty-state-body">
                                         Create one here, then save items from the marketplace into it.
@@ -320,7 +319,6 @@ export function ListsPage() {
 
                                 {!selectedList ? (
                                     <div className="empty-state lists-detail-empty">
-                                        <div className="empty-state-icon">🪄</div>
                                         <h2 className="empty-state-title">Pick a list to inspect it</h2>
                                         <p className="empty-state-body">
                                             You can create a new list here, then add items from the marketplace on the <Link to="/home">Home</Link> page.

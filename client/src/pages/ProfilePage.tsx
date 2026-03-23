@@ -2,12 +2,14 @@ import { useEffect, useState } from 'react';
 import { Navigate } from 'react-router-dom';
 import { LISTING_CATEGORY_OPTIONS } from '../constants/listingCategories';
 import { useAuth } from '../hooks/useAuth';
+import { deleteListingWatch, getWatchedListings } from '../services/listingWatchService';
 import {
     createNotificationPreference,
     deleteNotificationPreference,
     getNotificationPreferences
 } from '../services/notificationPreferenceService';
 import type { NotificationPreference } from '../types/notificationPreference';
+import type { Listing } from '../types/listing';
 
 function getInitial(email: string | undefined): string {
     if (!email) return '?';
@@ -17,11 +19,13 @@ function getInitial(email: string | undefined): string {
 export function ProfilePage() {
     const { user, loading } = useAuth();
     const [preferences, setPreferences] = useState<NotificationPreference[]>([]);
+    const [watchedListings, setWatchedListings] = useState<Listing[]>([]);
     const [keywords, setKeywords] = useState('');
     const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
     const [loadingPreferences, setLoadingPreferences] = useState(true);
     const [submitting, setSubmitting] = useState(false);
     const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
+    const [pendingWatchDeleteId, setPendingWatchDeleteId] = useState<string | null>(null);
     const [statusMessage, setStatusMessage] = useState<string | null>(null);
     const [error, setError] = useState<string | null>(null);
 
@@ -46,6 +50,23 @@ export function ProfilePage() {
         }
 
         void loadPreferences();
+    }, [user?.isEmailVerified]);
+
+    useEffect(() => {
+        async function loadWatchedListings() {
+            if (!user?.isEmailVerified) {
+                return;
+            }
+
+            try {
+                const response = await getWatchedListings();
+                setWatchedListings(response.listings);
+            } catch (loadError) {
+                setError(loadError instanceof Error ? loadError.message : 'Unable to load watched items.');
+            }
+        }
+
+        void loadWatchedListings();
     }, [user?.isEmailVerified]);
 
     if (!loading && !user?.isEmailVerified) {
@@ -129,7 +150,7 @@ export function ProfilePage() {
                         </li>
                         <li className="profile-detail-item">
                             <span className="profile-detail-label">Saved alerts</span>
-                            <span className="profile-detail-value">{preferences.length}</span>
+                            <span className="profile-detail-value">{preferences.length + watchedListings.length}</span>
                         </li>
                     </ul>
                 </section>
@@ -189,7 +210,6 @@ export function ProfilePage() {
 
                         {!loadingPreferences && !preferences.length ? (
                             <div className="empty-state profile-alerts-empty">
-                                <div className="empty-state-icon">🔔</div>
                                 <h2 className="empty-state-title">No alerts yet</h2>
                                 <p className="empty-state-body">
                                     Add a few keywords or categories above to start receiving email notifications.
@@ -238,6 +258,67 @@ export function ProfilePage() {
                                 ))}
                             </div>
                         ) : null}
+                    </section>
+
+                    <section className="profile-alerts-panel" aria-label="Watched items">
+                        <div className="profile-alerts-header">
+                            <h2 className="section-heading">Watched Items</h2>
+                        </div>
+
+                        {!watchedListings.length ? (
+                            <div className="empty-state profile-alerts-empty">
+                                <h2 className="empty-state-title">No watched items</h2>
+                                <p className="empty-state-body">
+                                    Open any listing detail page and choose <strong>Email Me About Changes</strong> to follow it.
+                                </p>
+                            </div>
+                        ) : (
+                            <div className="profile-alerts-list">
+                                {watchedListings.map((listing) => (
+                                    <article className="profile-alert-card" key={listing.id}>
+                                        <div className="profile-alert-card-header">
+                                            <div>
+                                                <h3 className="profile-alert-card-title">{listing.name}</h3>
+                                                <p className="profile-watch-price">${listing.price.toFixed(2)}</p>
+                                            </div>
+                                            <div className="profile-watch-actions">
+                                                <button
+                                                    className="button profile-alert-delete-button"
+                                                    type="button"
+                                                    onClick={async () => {
+                                                        setPendingWatchDeleteId(listing.id);
+                                                        setError(null);
+                                                        setStatusMessage(null);
+
+                                                        try {
+                                                            await deleteListingWatch(listing.id);
+                                                            setWatchedListings((current) => current.filter((item) => item.id !== listing.id));
+                                                            setStatusMessage('Watched item removed.');
+                                                        } catch (deleteError) {
+                                                            setError(deleteError instanceof Error ? deleteError.message : 'Unable to stop watching this item.');
+                                                        } finally {
+                                                            setPendingWatchDeleteId(null);
+                                                        }
+                                                    }}
+                                                    disabled={pendingWatchDeleteId === listing.id}
+                                                >
+                                                    {pendingWatchDeleteId === listing.id ? 'Removing...' : 'Stop Watching'}
+                                                </button>
+                                            </div>
+                                        </div>
+
+                                        <p className="lists-list-card-body">{listing.description}</p>
+                                        <div className="listing-categories">
+                                            {listing.categories.map((category) => (
+                                                <span className="listing-category-chip" key={`${listing.id}-${category}`}>
+                                                    {category}
+                                                </span>
+                                            ))}
+                                        </div>
+                                    </article>
+                                ))}
+                            </div>
+                        )}
                     </section>
                 </section>
             </div>

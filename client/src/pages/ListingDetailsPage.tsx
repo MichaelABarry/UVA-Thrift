@@ -2,6 +2,11 @@ import { useEffect, useState } from 'react';
 import { Link, Navigate, useParams } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { getListingDetails } from '../services/listingService';
+import {
+    createListingWatch,
+    deleteListingWatch,
+    getListingWatchStatus
+} from '../services/listingWatchService';
 import type { Listing } from '../types/listing';
 
 function formatDate(iso: string): string {
@@ -13,7 +18,11 @@ export function ListingDetailsPage() {
     const { listingId } = useParams();
     const [listing, setListing] = useState<Listing | null>(null);
     const [loadingListing, setLoadingListing] = useState(true);
+    const [loadingWatchState, setLoadingWatchState] = useState(true);
+    const [watching, setWatching] = useState(false);
+    const [watchSubmitting, setWatchSubmitting] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    const [statusMessage, setStatusMessage] = useState<string | null>(null);
 
     useEffect(() => {
         async function loadListing() {
@@ -38,8 +47,57 @@ export function ListingDetailsPage() {
         void loadListing();
     }, [listingId, user?.isEmailVerified]);
 
+    useEffect(() => {
+        async function loadWatchState() {
+            if (!listingId || !user?.isEmailVerified) {
+                setLoadingWatchState(false);
+                return;
+            }
+
+            setLoadingWatchState(true);
+
+            try {
+                const response = await getListingWatchStatus(listingId);
+                setWatching(response.isWatching);
+            } catch {
+                setWatching(false);
+            } finally {
+                setLoadingWatchState(false);
+            }
+        }
+
+        void loadWatchState();
+    }, [listingId, user?.isEmailVerified]);
+
     if (!loading && !user?.isEmailVerified) {
         return <Navigate to="/" replace />;
+    }
+
+    async function handleWatchToggle() {
+        if (!listing) {
+            return;
+        }
+
+        setWatchSubmitting(true);
+        setError(null);
+        setStatusMessage(null);
+
+        try {
+            if (watching) {
+                await deleteListingWatch(listing.id);
+                setWatching(false);
+                setStatusMessage('You will no longer receive updates for this item.');
+                return;
+            }
+
+            await createListingWatch(listing.id);
+            setWatching(true);
+            setStatusMessage('You will receive emails if this item is updated or deleted.');
+        } catch (watchError) {
+            setError(watchError instanceof Error ? watchError.message : 'Unable to update watch settings for this item.');
+        } finally {
+            setWatchSubmitting(false);
+        }
     }
 
     return (
@@ -48,7 +106,6 @@ export function ListingDetailsPage() {
                 <div className="listing-details-header">
                     <div>
                         <h1 className="home-heading">Listing Details</h1>
-                        <p className="home-subheading">Review the full item details from your notification email.</p>
                     </div>
                     <Link className="button button-secondary" to="/home">
                         Back to Marketplace
@@ -57,6 +114,7 @@ export function ListingDetailsPage() {
 
                 {loadingListing ? <p className="loading-spinner">Loading listing details...</p> : null}
                 {error ? <p className="status status-error">{error}</p> : null}
+                {statusMessage ? <p className="status status-success">{statusMessage}</p> : null}
 
                 {listing && !loadingListing ? (
                     <article className="listing-details-card">
@@ -85,6 +143,25 @@ export function ListingDetailsPage() {
                             </div>
 
                             <p className="listing-details-description">{listing.description}</p>
+
+                            {user?.id !== listing.userId ? (
+                                <div className="listing-details-actions">
+                                    <button
+                                        className={`button ${watching ? 'button-secondary' : 'button-accent'}`}
+                                        type="button"
+                                        onClick={handleWatchToggle}
+                                        disabled={loadingWatchState || watchSubmitting}
+                                    >
+                                        {loadingWatchState
+                                            ? 'Loading alert...'
+                                            : watchSubmitting
+                                                ? 'Saving...'
+                                                : watching
+                                                    ? 'Stop Watching Item'
+                                                    : 'Email Me About Changes'}
+                                    </button>
+                                </div>
+                            ) : null}
                         </div>
                     </article>
                 ) : null}

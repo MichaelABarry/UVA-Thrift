@@ -922,6 +922,10 @@ a.button {
   line-height: 1.7;
 }
 
+.listing-details-actions {
+  margin-top: 1.25rem;
+}
+
 /* ──────────────── Auth Page ──────────────── */
 
 .auth-brand {
@@ -1053,6 +1057,18 @@ a.button {
 
 .profile-alert-delete-button:hover:not(:disabled) {
   background: #912018;
+}
+
+.profile-watch-price {
+  margin: 0.25rem 0 0;
+  color: var(--orange);
+  font-weight: 700;
+  font-size: 0.9rem;
+}
+
+.profile-watch-actions {
+  display: flex;
+  align-items: center;
 }
 
 .profile-alert-group {
