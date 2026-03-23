@@ -14,6 +14,20 @@ type ListingEmailPayload = {
     };
 };
 
+type WatchedListingChangeEmailPayload = {
+    toEmail: string;
+    changeType: 'updated' | 'deleted';
+    listing: {
+        id: string;
+        name: string;
+        description: string;
+        price: number;
+        categories: string[];
+        imageUrl: string | null;
+        createdAt: string;
+    };
+};
+
 function createTransporter() {
     return nodemailer.createTransport({
         host: env.SMTP_HOST,
@@ -80,5 +94,47 @@ ${listing.description}
 Price: $${listing.price.toFixed(2)}
 Categories: ${listing.categories.join(', ')}
 View listing: ${listingUrl}`
+    });
+}
+
+export async function sendWatchedListingChangeEmail({ toEmail, changeType, listing }: WatchedListingChangeEmailPayload) {
+    const listingUrl = `${env.APP_URL}/listings/${encodeURIComponent(listing.id)}`;
+    const subject =
+        changeType === 'updated'
+            ? `An item you are watching was updated: ${listing.name}`
+            : `An item you are watching was deleted: ${listing.name}`;
+    const summary =
+        changeType === 'updated'
+            ? 'An item you are interested in was modified on UVA Thrift.'
+            : 'An item you were watching was removed from UVA Thrift.';
+
+    if (env.NODE_ENV === 'development' && !env.SMTP_PASS) {
+        console.log(`Watched listing ${changeType} notification for ${toEmail}: ${listingUrl}`);
+        return;
+    }
+
+    const transporter = createTransporter();
+    const linkMarkup = changeType === 'updated'
+        ? `<p><a href="${listingUrl}">View listing</a></p>`
+        : '';
+    const linkText = changeType === 'updated' ? `View listing: ${listingUrl}` : '';
+
+    await transporter.sendMail({
+        from: env.SMTP_FROM,
+        to: toEmail,
+        subject,
+        html: `
+            <p>${summary}</p>
+            <p><strong>${listing.name}</strong></p>
+            <p>Price: $${listing.price.toFixed(2)}</p>
+            <p>Categories: ${listing.categories.join(', ')}</p>
+            ${linkMarkup}
+        `,
+        text: `${summary}
+
+${listing.name}
+Price: $${listing.price.toFixed(2)}
+Categories: ${listing.categories.join(', ')}
+${linkText}`.trim()
     });
 }

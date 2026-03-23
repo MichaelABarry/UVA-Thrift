@@ -12,6 +12,7 @@ import {
 import { deleteListingImage, uploadListingImage } from './storageService';
 import { HttpError } from '../utils/httpError';
 import { notifyUsersAboutNewListing } from './notificationPreferenceService';
+import { notifyWatchersAboutListingChange } from './listingWatchService';
 
 const listingSchema = z.object({
     name: z.string().trim().min(1).max(120),
@@ -149,7 +150,15 @@ export async function updateListingForUser(userId: string, listingId: string, in
             await deleteListingImage(existingListing.image_key);
         }
 
-        return toListingResponse(listing);
+        const response = toListingResponse(listing);
+
+        try {
+            await notifyWatchersAboutListingChange('updated', response, userId);
+        } catch (error) {
+            console.error('Unable to send watched listing update emails:', error);
+        }
+
+        return response;
     } catch (error) {
         if (uploadedImage?.imageKey) {
             await deleteListingImage(uploadedImage.imageKey);
@@ -164,6 +173,12 @@ export async function deleteListingForUser(userId: string, listingId: string) {
 
     if (!listing) {
         throw new HttpError('Listing not found.', 404);
+    }
+
+    try {
+        await notifyWatchersAboutListingChange('deleted', toListingResponse(listing), userId);
+    } catch (error) {
+        console.error('Unable to send watched listing delete emails:', error);
     }
 
     await deleteListingImage(listing.image_key);
