@@ -1,7 +1,9 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Navigate } from 'react-router-dom';
+import { Link, Navigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { getListings } from '../services/listingService';
+import { addItemToList, getLists as getUserLists } from '../services/listService';
+import type { ItemList } from '../types/list';
 import type { Listing } from '../types/listing';
 
 const DESCRIPTION_PREVIEW_LENGTH = 120;
@@ -15,6 +17,7 @@ function formatDate(iso: string): string {
 export function HomePage() {
     const { user, loading } = useAuth();
     const [listings, setListings] = useState<Listing[]>([]);
+    const [lists, setLists] = useState<ItemList[]>([]);
     const [searchQuery, setSearchQuery] = useState('');
     const [sortOption, setSortOption] = useState<SortOption>('date-desc');
     const [minPrice, setMinPrice] = useState('');
@@ -23,7 +26,13 @@ export function HomePage() {
     const [dateAfter, setDateAfter] = useState('');
     const [dateBefore, setDateBefore] = useState('');
     const [loadingListings, setLoadingListings] = useState(true);
+    const [loadingLists, setLoadingLists] = useState(true);
     const [error, setError] = useState<string | null>(null);
+    const [listError, setListError] = useState<string | null>(null);
+    const [listStatus, setListStatus] = useState<string | null>(null);
+    const [expandedListPickerId, setExpandedListPickerId] = useState<string | null>(null);
+    const [selectedListIds, setSelectedListIds] = useState<Record<string, string>>({});
+    const [pendingSaveListingId, setPendingSaveListingId] = useState<string | null>(null);
 
     useEffect(() => {
         async function loadListings() {
@@ -42,6 +51,26 @@ export function HomePage() {
 
         if (user?.isEmailVerified) {
             void loadListings();
+        }
+    }, [user?.isEmailVerified]);
+
+    useEffect(() => {
+        async function loadLists() {
+            setLoadingLists(true);
+            setListError(null);
+
+            try {
+                const response = await getUserLists();
+                setLists(response.lists);
+            } catch (loadError) {
+                setListError(loadError instanceof Error ? loadError.message : 'Unable to load your lists.');
+            } finally {
+                setLoadingLists(false);
+            }
+        }
+
+        if (user?.isEmailVerified) {
+            void loadLists();
         }
     }, [user?.isEmailVerified]);
 
@@ -128,6 +157,30 @@ export function HomePage() {
         return <Navigate to="/" replace />;
     }
 
+    async function handleAddToList(listing: Listing) {
+        const selectedListId = selectedListIds[listing.id] ?? lists[0]?.id;
+
+        if (!selectedListId) {
+            setListError('Create a list before saving items.');
+            return;
+        }
+
+        setPendingSaveListingId(listing.id);
+        setListError(null);
+        setListStatus(null);
+
+        try {
+            const response = await addItemToList(selectedListId, listing.id);
+            setLists((current) => current.map((list) => (list.id === response.list.id ? response.list : list)));
+            setExpandedListPickerId(null);
+            setListStatus(`Saved ${listing.name} to ${response.list.name}.`);
+        } catch (saveError) {
+            setListError(saveError instanceof Error ? saveError.message : 'Unable to save that item to your list.');
+        } finally {
+            setPendingSaveListingId(null);
+        }
+    }
+
     return (
         <main className="page-content">
             <div className="page-container">
@@ -156,6 +209,8 @@ export function HomePage() {
                 {/* Loading / Error */}
                 {loadingListings ? <p className="loading-spinner">Loading listings...</p> : null}
                 {error ? <p className="status status-error">{error}</p> : null}
+                {listError ? <p className="status status-error">{listError}</p> : null}
+                {listStatus ? <p className="status status-success">{listStatus}</p> : null}
 
                 {/* Empty state */}
                 {!loadingListings && !error && !hasListings ? (
@@ -318,6 +373,62 @@ export function HomePage() {
                                             </div>
                                             <span className="listing-date">{formatDate(listing.createdAt)}</span>
                                         </div>
+
+                                        <div className="listing-actions listing-actions-stack">
+                                            <button
+                                                className="button button-secondary listing-action-button"
+                                                type="button"
+                                                onClick={() =>
+                                                    setExpandedListPickerId((current) =>
+                                                        current === listing.id ? null : listing.id
+                                                    )
+                                                }
+                                                disabled={loadingLists}
+                                            >
+                                                {loadingLists ? 'Loading lists...' : 'Add to List'}
+                                            </button>
+                                        </div>
+
+                                        {expandedListPickerId === listing.id ? (
+                                            <div className="listing-list-picker">
+                                                {lists.length ? (
+                                                    <>
+                                                        <label className="sidebar-label" htmlFor={`list-select-${listing.id}`}>
+                                                            Save to
+                                                        </label>
+                                                        <select
+                                                            id={`list-select-${listing.id}`}
+                                                            className="input sidebar-input"
+                                                            value={selectedListIds[listing.id] ?? lists[0]?.id ?? ''}
+                                                            onChange={(event) =>
+                                                                setSelectedListIds((current) => ({
+                                                                    ...current,
+                                                                    [listing.id]: event.target.value
+                                                                }))
+                                                            }
+                                                        >
+                                                            {lists.map((list) => (
+                                                                <option key={list.id} value={list.id}>
+                                                                    {list.name}
+                                                                </option>
+                                                            ))}
+                                                        </select>
+                                                        <button
+                                                            className="button button-accent"
+                                                            type="button"
+                                                            onClick={() => handleAddToList(listing)}
+                                                            disabled={pendingSaveListingId === listing.id}
+                                                        >
+                                                            {pendingSaveListingId === listing.id ? 'Saving...' : 'Save Item'}
+                                                        </button>
+                                                    </>
+                                                ) : (
+                                                    <p className="listing-list-picker-empty">
+                                                        You need a list first. <Link to="/lists">Create one here.</Link>
+                                                    </p>
+                                                )}
+                                            </div>
+                                        ) : null}
                                     </article>
                                 );
                             })}
