@@ -1,17 +1,9 @@
 import { useEffect, useRef, useState } from 'react';
 import type { ChangeEvent, FormEvent } from 'react';
 import { Navigate, useNavigate, useParams } from 'react-router-dom';
+import { LISTING_CATEGORY_OPTIONS } from '../constants/listingCategories';
 import { useAuth } from '../hooks/useAuth';
 import { createListing, getMyListing, updateListing } from '../services/listingService';
-
-const CATEGORY_OPTIONS = [
-    { label: 'Furniture', value: 'furniture' },
-    { label: 'School Supplies', value: 'school supplies' },
-    { label: 'Clothes', value: 'clothes' },
-    { label: 'Electronics', value: 'electronics' },
-    { label: 'Kitchen', value: 'kitchen' },
-    { label: 'Other', value: 'other' }
-];
 
 export function CreateListingPage() {
     const { user, loading } = useAuth();
@@ -205,7 +197,7 @@ export function CreateListingPage() {
                     <fieldset className="category-fieldset">
                         <legend className="section-heading">Categories</legend>
                         <div className="category-grid">
-                            {CATEGORY_OPTIONS.map((category) => (
+                            {LISTING_CATEGORY_OPTIONS.map((category) => (
                                 <label key={category.value} className="category-option">
                                     <input
                                         type="checkbox"
