@@ -379,6 +379,23 @@ a.button {
   background: #f8f9fc;
 }
 
+.subcategory-section {
+  margin-top: 12px;
+  padding: 12px 14px;
+  border-left: 3px solid var(--navy);
+  background: #f8f9fc;
+  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+}
+
+.subcategory-heading {
+  margin: 0 0 10px 0;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--navy);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
 .listing-upload-group {
   display: grid;
   gap: 0.6rem;

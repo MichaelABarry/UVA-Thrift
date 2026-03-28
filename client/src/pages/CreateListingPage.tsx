@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import type { ChangeEvent, FormEvent } from 'react';
 import { Navigate, useNavigate, useParams } from 'react-router-dom';
-import { LISTING_CATEGORY_OPTIONS } from '../constants/listingCategories';
+import { LISTING_CATEGORY_OPTIONS, LISTING_SUBCATEGORY_OPTIONS } from '../constants/listingCategories';
 import { useAuth } from '../hooks/useAuth';
 import { createListing, getMyListing, updateListing } from '../services/listingService';
 
@@ -69,10 +69,20 @@ export function CreateListingPage() {
     }
 
     function handleCategoryToggle(category: string) {
+        setCategories((current) => {
+            if (current.includes(category)) {
+                const subcategoryValues = (LISTING_SUBCATEGORY_OPTIONS[category] ?? []).map((s) => s.value);
+                return current.filter((item) => item !== category && !subcategoryValues.includes(item));
+            }
+            return [...current, category];
+        });
+    }
+
+    function handleSubcategoryToggle(subcategory: string) {
         setCategories((current) =>
-            current.includes(category)
-                ? current.filter((item) => item !== category)
-                : [...current, category]
+            current.includes(subcategory)
+                ? current.filter((item) => item !== subcategory)
+                : [...current, subcategory]
         );
     }
 
@@ -209,6 +219,29 @@ export function CreateListingPage() {
                                 </label>
                             ))}
                         </div>
+
+                        {LISTING_CATEGORY_OPTIONS.filter(
+                            (category) =>
+                                categories.includes(category.value) &&
+                                LISTING_SUBCATEGORY_OPTIONS[category.value]
+                        ).map((category) => (
+                            <div key={category.value} className="subcategory-section">
+                                <p className="subcategory-heading">{category.label} — select all that apply</p>
+                                <div className="category-grid">
+                                    {LISTING_SUBCATEGORY_OPTIONS[category.value].map((sub) => (
+                                        <label key={sub.value} className="category-option">
+                                            <input
+                                                type="checkbox"
+                                                checked={categories.includes(sub.value)}
+                                                onChange={() => handleSubcategoryToggle(sub.value)}
+                                                disabled={loadingListing || submitting}
+                                            />
+                                            <span>{sub.label}</span>
+                                        </label>
+                                    ))}
+                                </div>
+                            </div>
+                        ))}
                     </fieldset>
 
                     <button className="button button-accent" type="submit" disabled={loadingListing || submitting}>
