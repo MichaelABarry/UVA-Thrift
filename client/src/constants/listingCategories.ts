@@ -1,3 +1,11 @@
+export const LISTING_CONDITION_OPTIONS = [
+    { label: 'New', value: 'new' },
+    { label: 'Excellent', value: 'excellent' },
+    { label: 'Good', value: 'good' },
+    { label: 'Fair', value: 'fair' },
+    { label: 'Poor', value: 'poor' }
+] as const;
+
 export const LISTING_CATEGORY_OPTIONS = [
     { label: 'Furniture', value: 'furniture' },
     { label: 'School Supplies', value: 'school supplies' },

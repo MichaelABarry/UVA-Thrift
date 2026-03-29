@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import type { ChangeEvent } from 'react';
 import { Navigate, useNavigate, useParams } from 'react-router-dom';
-import { LISTING_CATEGORY_OPTIONS, LISTING_SUBCATEGORY_OPTIONS } from '../constants/listingCategories';
+import { LISTING_CATEGORY_OPTIONS, LISTING_CONDITION_OPTIONS, LISTING_SUBCATEGORY_OPTIONS } from '../constants/listingCategories';
 import { useAuth } from '../hooks/useAuth';
 import { createListing, getMyListing, updateListing } from '../services/listingService';
 
@@ -14,6 +14,7 @@ export function CreateListingPage() {
     const [description, setDescription] = useState('');
     const [descriptionOpen, setDescriptionOpen] = useState(false);
     const [price, setPrice] = useState('');
+    const [condition, setCondition] = useState('good');
     const [categories, setCategories] = useState<string[]>([]);
     const [selectedImage, setSelectedImage] = useState<File | null>(null);
     const [message, setMessage] = useState<string | null>(null);
@@ -40,6 +41,7 @@ export function CreateListingPage() {
                     setDescriptionOpen(true);
                 }
                 setPrice(response.listing.price.toString());
+                setCondition(response.listing.condition);
                 setCategories(response.listing.categories);
             } catch (loadError) {
                 setError(loadError instanceof Error ? loadError.message : 'Unable to load listing.');
@@ -90,6 +92,7 @@ export function CreateListingPage() {
                 description: description.trim(),
                 price: Number(price),
                 categories,
+                condition,
                 image: selectedImage,
             };
 
@@ -104,6 +107,7 @@ export function CreateListingPage() {
             setDescription('');
             setDescriptionOpen(false);
             setPrice('');
+            setCondition('good');
             setCategories([]);
             setSelectedImage(null);
             if (fileInputRef.current) {
@@ -200,6 +204,23 @@ export function CreateListingPage() {
                                 required
                                 disabled={isDisabled}
                             />
+                        </div>
+
+                        {/* Condition */}
+                        <div className="cl-field">
+                            <label className="cl-label" htmlFor="cl-condition">Condition</label>
+                            <select
+                                id="cl-condition"
+                                className="cl-input"
+                                value={condition}
+                                onChange={(e) => setCondition(e.target.value)}
+                                required
+                                disabled={isDisabled}
+                            >
+                                {LISTING_CONDITION_OPTIONS.map((opt) => (
+                                    <option key={opt.value} value={opt.value}>{opt.label}</option>
+                                ))}
+                            </select>
                         </div>
 
                         {/* Image upload */}
