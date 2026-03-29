@@ -16,7 +16,7 @@ import { notifyWatchersAboutListingChange } from './listingWatchService';
 
 const listingSchema = z.object({
     name: z.string().trim().min(1).max(120),
-    description: z.string().trim().min(1).max(2000),
+    description: z.string().trim().max(2000).optional().default(''),
     price: z.coerce.number().finite().nonnegative().max(100000),
     categories: z.preprocess(
         (value) => {
