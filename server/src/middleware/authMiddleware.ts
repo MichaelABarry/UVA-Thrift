@@ -18,6 +18,9 @@ export async function requireAuth(req: Request, res: Response, next: NextFunctio
         email: current.user.email,
         password_hash: '',
         is_email_verified: current.user.isEmailVerified,
+        display_name: current.user.displayName ?? null,
+        phone_number: current.user.phoneNumber ?? null,
+        venmo_username: current.user.venmoUsername ?? null,
         created_at: ''
     };
     req.sessionId = current.sessionId;
@@ -43,6 +46,9 @@ export async function requireVerifiedEmail(req: Request, res: Response, next: Ne
         email: current.user.email,
         password_hash: '',
         is_email_verified: current.user.isEmailVerified,
+        display_name: current.user.displayName ?? null,
+        phone_number: current.user.phoneNumber ?? null,
+        venmo_username: current.user.venmoUsername ?? null,
         created_at: ''
     };
     req.sessionId = current.sessionId;

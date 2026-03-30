@@ -1,10 +1,12 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
+import { useAuth } from '../hooks/useAuth';
 import { verifyEmail } from '../services/authService';
 
 export function VerifyEmailPage() {
     const [searchParams] = useSearchParams();
     const navigate = useNavigate();
+    const { refreshUser } = useAuth();
     const [status, setStatus] = useState<'loading' | 'success' | 'error'>('loading');
     const [message, setMessage] = useState('Verifying your email...');
 
@@ -20,11 +22,13 @@ export function VerifyEmailPage() {
 
             try {
                 await verifyEmail(token);
+                // Server also created a session — sync auth context then go to profile setup.
+                await refreshUser();
                 setStatus('success');
-                setMessage('Email verified. You can now log in.');
+                setMessage('Email verified! Setting up your profile...');
                 setTimeout(() => {
-                navigate('/', { replace: true });
-                }, 1200);
+                    navigate('/setup-profile', { replace: true });
+                }, 800);
             } catch (error) {
                 setStatus('error');
                 setMessage(error instanceof Error ? error.message : 'Verification failed.');
@@ -32,7 +36,7 @@ export function VerifyEmailPage() {
         }
 
         void runVerification();
-    }, [navigate, token]);
+    }, [navigate, refreshUser, token]);
 
     return (
         <main className="page">

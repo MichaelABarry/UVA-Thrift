@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Navigate } from 'react-router-dom';
 import { LISTING_CATEGORY_OPTIONS } from '../constants/listingCategories';
 import { useAuth } from '../hooks/useAuth';
+import { updateProfile } from '../services/authService';
 import { deleteListingWatch, getWatchedListings } from '../services/listingWatchService';
 import {
     createNotificationPreference,
@@ -17,11 +18,17 @@ function getInitial(email: string | undefined): string {
 }
 
 export function ProfilePage() {
-    const { user, loading } = useAuth();
+    const { user, loading, setUser } = useAuth();
     const [preferences, setPreferences] = useState<NotificationPreference[]>([]);
     const [watchedListings, setWatchedListings] = useState<Listing[]>([]);
     const [keywords, setKeywords] = useState('');
     const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
+    const [profileDisplayName, setProfileDisplayName] = useState(user?.displayName ?? '');
+    const [profilePhone, setProfilePhone] = useState(user?.phoneNumber ?? '');
+    const [profileVenmo, setProfileVenmo] = useState(user?.venmoUsername ?? '');
+    const [profileSubmitting, setProfileSubmitting] = useState(false);
+    const [profileStatus, setProfileStatus] = useState<string | null>(null);
+    const [profileError, setProfileError] = useState<string | null>(null);
     const [loadingPreferences, setLoadingPreferences] = useState(true);
     const [submitting, setSubmitting] = useState(false);
     const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
@@ -81,6 +88,27 @@ export function ProfilePage() {
                 ? current.filter((item) => item !== category)
                 : [...current, category]
         );
+    }
+
+    async function handleSaveProfile(e: React.FormEvent) {
+        e.preventDefault();
+        setProfileSubmitting(true);
+        setProfileError(null);
+        setProfileStatus(null);
+
+        try {
+            const response = await updateProfile({
+                displayName:   profileDisplayName.trim()   || null,
+                phoneNumber:   profilePhone.trim()         || null,
+                venmoUsername: profileVenmo.trim()         || null
+            });
+            setUser(response.user);
+            setProfileStatus('Contact info saved.');
+        } catch (err) {
+            setProfileError(err instanceof Error ? err.message : 'Unable to save contact info.');
+        } finally {
+            setProfileSubmitting(false);
+        }
     }
 
     async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
@@ -153,6 +181,68 @@ export function ProfilePage() {
                             <span className="profile-detail-value">{preferences.length + watchedListings.length}</span>
                         </li>
                     </ul>
+
+                    <hr className="profile-divider" />
+
+                    <h2 className="section-heading">Contact Info</h2>
+                    <p className="profile-contact-hint">
+                        Shared privately with the other party once you start a conversation.
+                    </p>
+
+                    {profileStatus ? <p className="status status-success">{profileStatus}</p> : null}
+                    {profileError  ? <p className="status status-error">{profileError}</p>   : null}
+
+                    <form className="form-grid" onSubmit={handleSaveProfile}>
+                        <label className="setup-profile-label">
+                            <span className="sidebar-label">Display name</span>
+                            <input
+                                className="input"
+                                type="text"
+                                value={profileDisplayName}
+                                onChange={(e) => setProfileDisplayName(e.target.value)}
+                                placeholder="e.g. John Doe"
+                                maxLength={100}
+                                disabled={profileSubmitting}
+                            />
+                        </label>
+
+                        <label className="setup-profile-label">
+                            <span className="sidebar-label">Phone number</span>
+                            <input
+                                className="input"
+                                type="tel"
+                                value={profilePhone}
+                                onChange={(e) => setProfilePhone(e.target.value)}
+                                placeholder="e.g. 555-867-5309"
+                                maxLength={30}
+                                disabled={profileSubmitting}
+                            />
+                        </label>
+
+                        <label className="setup-profile-label">
+                            <span className="sidebar-label">Venmo username</span>
+                            <div className="setup-profile-venmo-row">
+                                <span className="setup-profile-at">@</span>
+                                <input
+                                    className="input"
+                                    type="text"
+                                    value={profileVenmo}
+                                    onChange={(e) => setProfileVenmo(e.target.value)}
+                                    placeholder="your-venmo"
+                                    maxLength={50}
+                                    disabled={profileSubmitting}
+                                />
+                            </div>
+                        </label>
+
+                        <button
+                            className="button button-accent"
+                            type="submit"
+                            disabled={profileSubmitting}
+                        >
+                            {profileSubmitting ? 'Saving...' : 'Save Contact Info'}
+                        </button>
+                    </form>
                 </section>
 
                 <section className="profile-notification-section">

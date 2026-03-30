@@ -48,6 +48,13 @@ export function getProfile() {
     return apiFetch<{ user: User }>('/api/auth/profile');
 }
 
+export function updateProfile(payload: { displayName?: string | null; phoneNumber?: string | null; venmoUsername?: string | null }) {
+    return apiFetch<{ user: User }>('/api/auth/profile', {
+        method: 'PUT',
+        body: JSON.stringify(payload)
+    });
+}
+
 export function logout() {
     return apiFetch<{ message: string }>('/api/auth/logout', {
         method: 'POST'

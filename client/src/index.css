@@ -1229,6 +1229,58 @@ a.button {
   flex: 1;
 }
 
+/* ──────────────── Setup Profile / Contact Info ──────────────── */
+
+.setup-profile-card {
+  max-width: 480px;
+  width: 100%;
+}
+
+.setup-profile-label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.setup-profile-venmo-row {
+  display: flex;
+  align-items: center;
+  gap: 0;
+}
+
+.setup-profile-at {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-right: none;
+  border-radius: var(--radius-sm) 0 0 var(--radius-sm);
+  padding: 0.7rem 0.65rem;
+  font-size: 0.95rem;
+  color: var(--text-secondary);
+  line-height: 1;
+}
+
+.setup-profile-venmo-row .input {
+  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+}
+
+.setup-profile-actions {
+  display: flex;
+  gap: 0.65rem;
+  flex-wrap: wrap;
+}
+
+.profile-divider {
+  border: none;
+  border-top: 1px solid var(--border);
+  margin: 1.5rem 0 1.25rem;
+}
+
+.profile-contact-hint {
+  font-size: 0.88rem;
+  color: var(--text-secondary);
+  margin: 0 0 1rem;
+}
+
 /* ──────────────── Auth Page ──────────────── */
 
 .auth-brand {
