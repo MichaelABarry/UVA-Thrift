@@ -23,6 +23,8 @@ export function ConversationPage() {
     const [messageText, setMessageText] = useState('');
     const [sending, setSending] = useState(false);
     const [sendError, setSendError] = useState<string | null>(null);
+    const [sharePhone, setSharePhone] = useState(false);
+    const [shareVenmo, setShareVenmo] = useState(false);
     const bottomRef = useRef<HTMLDivElement>(null);
     const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
@@ -71,6 +73,27 @@ export function ConversationPage() {
             if (pollRef.current) clearInterval(pollRef.current);
         };
     }, [conversationId, user?.isEmailVerified, pollMessages]);
+
+    async function handleShareContact() {
+        if (!conversationId) return;
+        const lines: string[] = ['Here is my contact/payment info:'];
+        if (sharePhone && user?.phoneNumber) lines.push(`Phone: ${user.phoneNumber}`);
+        if (shareVenmo && user?.venmoUsername) lines.push(`Venmo: @${user.venmoUsername}`);
+        const content = lines.join('\n');
+
+        setSending(true);
+        setSendError(null);
+        try {
+            const response = await sendMessage(conversationId, content);
+            setMessages((prev) => [...prev, response.message]);
+            setSharePhone(false);
+            setShareVenmo(false);
+        } catch (err) {
+            setSendError(err instanceof Error ? err.message : 'Unable to send.');
+        } finally {
+            setSending(false);
+        }
+    }
 
     async function handleSend(e: React.FormEvent) {
         e.preventDefault();
@@ -172,6 +195,41 @@ export function ConversationPage() {
                         </div>
 
                         {sendError ? <p className="status status-error">{sendError}</p> : null}
+
+                        <div className="conv-share-widget">
+                            <label className={`conv-share-option${!user?.phoneNumber ? ' conv-share-option-disabled' : ''}`}>
+                                <input
+                                    type="checkbox"
+                                    checked={sharePhone}
+                                    onChange={(e) => setSharePhone(e.target.checked)}
+                                    disabled={!user?.phoneNumber || sending}
+                                />
+                                Phone Number
+                                {!user?.phoneNumber ? (
+                                    <span className="conv-share-hint">Add in your profile</span>
+                                ) : null}
+                            </label>
+                            <label className={`conv-share-option${!user?.venmoUsername ? ' conv-share-option-disabled' : ''}`}>
+                                <input
+                                    type="checkbox"
+                                    checked={shareVenmo}
+                                    onChange={(e) => setShareVenmo(e.target.checked)}
+                                    disabled={!user?.venmoUsername || sending}
+                                />
+                                Venmo
+                                {!user?.venmoUsername ? (
+                                    <span className="conv-share-hint">Add in your profile</span>
+                                ) : null}
+                            </label>
+                            <button
+                                className="button button-secondary"
+                                type="button"
+                                disabled={(!sharePhone && !shareVenmo) || sending}
+                                onClick={() => { void handleShareContact(); }}
+                            >
+                                Share Contact/Payment Information
+                            </button>
+                        </div>
 
                         <form className="conv-send-form" onSubmit={handleSend}>
                             <input
