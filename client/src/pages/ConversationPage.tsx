@@ -134,121 +134,125 @@ export function ConversationPage() {
 
                 {conversation && !loadingConversation ? (
                     <>
-                        <div className="conv-listing-card">
-                            {conversation.listingImageUrl ? (
-                                <img
-                                    className="conv-listing-thumb"
-                                    src={conversation.listingImageUrl}
-                                    alt={conversation.listingName}
-                                />
-                            ) : (
-                                <div className="conv-listing-thumb-placeholder">No image</div>
-                            )}
-                            <div className="conv-listing-info">
-                                <span className="conv-listing-name">{conversation.listingName}</span>
-                                <span className="conv-listing-price">
-                                    ${conversation.listingPrice.toFixed(2)}
-                                </span>
-                            </div>
-                            <Link
-                                className="button button-secondary"
-                                to={`/listings/${conversation.listingId}`}
-                            >
-                                View Listing
-                            </Link>
-                        </div>
-
-                        <div
-                            className="conv-messages"
-                            aria-label="Conversation messages"
-                            aria-live="polite"
-                        >
-                            {messages.length === 0 ? (
-                                <p className="conv-no-messages">No messages yet. Say hello!</p>
-                            ) : null}
-                            {messages.map((msg) => {
-                                const isOwn = msg.senderId === user?.id;
-                                return (
-                                    <div
-                                        key={msg.id}
-                                        className={`conv-message ${isOwn ? 'conv-message-own' : 'conv-message-other'}`}
-                                    >
-                                        {!isOwn ? (
-                                            <div
-                                                className="conv-avatar"
-                                                aria-label={`${msg.senderEmail}'s avatar`}
-                                            >
-                                                {msg.senderInitial}
-                                            </div>
-                                        ) : null}
-                                        <div className="conv-message-body">
-                                            {!isOwn ? (
-                                                <span className="conv-sender">{msg.senderEmail}</span>
-                                            ) : null}
-                                            <div className="conv-bubble">{msg.content}</div>
-                                            <span className="conv-time">{formatTime(msg.createdAt)}</span>
-                                        </div>
+                        <div className="conv-body">
+                            <div className="conv-main">
+                                <div className="conv-listing-card">
+                                    {conversation.listingImageUrl ? (
+                                        <img
+                                            className="conv-listing-thumb"
+                                            src={conversation.listingImageUrl}
+                                            alt={conversation.listingName}
+                                        />
+                                    ) : (
+                                        <div className="conv-listing-thumb-placeholder">No image</div>
+                                    )}
+                                    <div className="conv-listing-info">
+                                        <span className="conv-listing-name">{conversation.listingName}</span>
+                                        <span className="conv-listing-price">
+                                            ${conversation.listingPrice.toFixed(2)}
+                                        </span>
                                     </div>
-                                );
-                            })}
-                            <div ref={bottomRef} />
+                                    <Link
+                                        className="button button-secondary"
+                                        to={`/listings/${conversation.listingId}`}
+                                    >
+                                        View Listing
+                                    </Link>
+                                </div>
+                                <div
+                                    className="conv-messages"
+                                    aria-label="Conversation messages"
+                                    aria-live="polite"
+                                >
+                                    {messages.length === 0 ? (
+                                        <p className="conv-no-messages">No messages yet. Say hello!</p>
+                                    ) : null}
+                                    {messages.map((msg) => {
+                                        const isOwn = msg.senderId === user?.id;
+                                        return (
+                                            <div
+                                                key={msg.id}
+                                                className={`conv-message ${isOwn ? 'conv-message-own' : 'conv-message-other'}`}
+                                            >
+                                                {!isOwn ? (
+                                                    <div
+                                                        className="conv-avatar"
+                                                        aria-label={`${msg.senderEmail}'s avatar`}
+                                                    >
+                                                        {msg.senderInitial}
+                                                    </div>
+                                                ) : null}
+                                                <div className="conv-message-body">
+                                                    {!isOwn ? (
+                                                        <span className="conv-sender">{msg.senderEmail}</span>
+                                                    ) : null}
+                                                    <div className="conv-bubble">{msg.content}</div>
+                                                    <span className="conv-time">{formatTime(msg.createdAt)}</span>
+                                                </div>
+                                            </div>
+                                        );
+                                    })}
+                                    <div ref={bottomRef} />
+                                </div>
+
+                                {sendError ? <p className="status status-error">{sendError}</p> : null}
+
+                                <form className="conv-send-form" onSubmit={handleSend}>
+                                    <input
+                                        className="input conv-send-input"
+                                        type="text"
+                                        value={messageText}
+                                        onChange={(e) => setMessageText(e.target.value)}
+                                        placeholder="Type a message..."
+                                        disabled={sending}
+                                        maxLength={2000}
+                                    />
+                                    <button
+                                        className="button button-accent"
+                                        type="submit"
+                                        disabled={sending || !messageText.trim()}
+                                    >
+                                        {sending ? 'Sending...' : 'Send'}
+                                    </button>
+                                </form>
+                            </div>
+
+                            <div className="conv-share-panel">
+                                <p className="conv-share-panel-title">Share Info</p>
+                                <label className={`conv-share-option${!user?.phoneNumber ? ' conv-share-option-disabled' : ''}`}>
+                                    <input
+                                        type="checkbox"
+                                        checked={sharePhone}
+                                        onChange={(e) => setSharePhone(e.target.checked)}
+                                        disabled={!user?.phoneNumber || sending}
+                                    />
+                                    Phone Number
+                                    {!user?.phoneNumber ? (
+                                        <span className="conv-share-hint">Add in profile</span>
+                                    ) : null}
+                                </label>
+                                <label className={`conv-share-option${!user?.venmoUsername ? ' conv-share-option-disabled' : ''}`}>
+                                    <input
+                                        type="checkbox"
+                                        checked={shareVenmo}
+                                        onChange={(e) => setShareVenmo(e.target.checked)}
+                                        disabled={!user?.venmoUsername || sending}
+                                    />
+                                    Venmo
+                                    {!user?.venmoUsername ? (
+                                        <span className="conv-share-hint">Add in profile</span>
+                                    ) : null}
+                                </label>
+                                <button
+                                    className="button button-secondary"
+                                    type="button"
+                                    disabled={(!sharePhone && !shareVenmo) || sending}
+                                    onClick={() => { void handleShareContact(); }}
+                                >
+                                    Share Contact/Payment Information
+                                </button>
+                            </div>
                         </div>
-
-                        {sendError ? <p className="status status-error">{sendError}</p> : null}
-
-                        <div className="conv-share-widget">
-                            <label className={`conv-share-option${!user?.phoneNumber ? ' conv-share-option-disabled' : ''}`}>
-                                <input
-                                    type="checkbox"
-                                    checked={sharePhone}
-                                    onChange={(e) => setSharePhone(e.target.checked)}
-                                    disabled={!user?.phoneNumber || sending}
-                                />
-                                Phone Number
-                                {!user?.phoneNumber ? (
-                                    <span className="conv-share-hint">Add in your profile</span>
-                                ) : null}
-                            </label>
-                            <label className={`conv-share-option${!user?.venmoUsername ? ' conv-share-option-disabled' : ''}`}>
-                                <input
-                                    type="checkbox"
-                                    checked={shareVenmo}
-                                    onChange={(e) => setShareVenmo(e.target.checked)}
-                                    disabled={!user?.venmoUsername || sending}
-                                />
-                                Venmo
-                                {!user?.venmoUsername ? (
-                                    <span className="conv-share-hint">Add in your profile</span>
-                                ) : null}
-                            </label>
-                            <button
-                                className="button button-secondary"
-                                type="button"
-                                disabled={(!sharePhone && !shareVenmo) || sending}
-                                onClick={() => { void handleShareContact(); }}
-                            >
-                                Share Contact/Payment Information
-                            </button>
-                        </div>
-
-                        <form className="conv-send-form" onSubmit={handleSend}>
-                            <input
-                                className="input conv-send-input"
-                                type="text"
-                                value={messageText}
-                                onChange={(e) => setMessageText(e.target.value)}
-                                placeholder="Type a message..."
-                                disabled={sending}
-                                maxLength={2000}
-                            />
-                            <button
-                                className="button button-accent"
-                                type="submit"
-                                disabled={sending || !messageText.trim()}
-                            >
-                                {sending ? 'Sending...' : 'Send'}
-                            </button>
-                        </form>
                     </>
                 ) : null}
             </div>
