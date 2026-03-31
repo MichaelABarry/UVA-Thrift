@@ -9,6 +9,7 @@ import { healthRouter } from './routes/healthRoutes';
 import { listRouter } from './routes/listRoutes';
 import { listingRouter } from './routes/listingRoutes';
 import { listingWatchRouter } from './routes/listingWatchRoutes';
+import { conversationRouter } from './routes/conversationRoutes';
 import { notificationPreferenceRouter } from './routes/notificationPreferenceRoutes';
 import { errorMiddleware } from './middleware/errorMiddleware';
 
@@ -34,6 +35,7 @@ export function createApp() {
     app.use('/api/lists', listRouter);
     app.use('/api/listings', listingRouter);
     app.use('/api/listing-watches', listingWatchRouter);
+    app.use('/api/conversations', conversationRouter);
     app.use('/api/notification-preferences', notificationPreferenceRouter);
 
     // In production, serve the React frontend from the 'client/dist' directory. 

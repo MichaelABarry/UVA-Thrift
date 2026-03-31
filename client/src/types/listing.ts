@@ -5,6 +5,7 @@ export type Listing = {
     description: string;
     price: number;
     categories: string[];
+    condition: string;
     imageUrl: string | null;
     createdAt: string;
 };
@@ -14,6 +15,7 @@ export type CreateListingPayload = {
     description: string;
     price: number;
     categories: string[];
+    condition: string;
     image?: File | null;
 };
 

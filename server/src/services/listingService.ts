@@ -16,8 +16,9 @@ import { notifyWatchersAboutListingChange } from './listingWatchService';
 
 const listingSchema = z.object({
     name: z.string().trim().min(1).max(120),
-    description: z.string().trim().min(1).max(2000),
+    description: z.string().trim().max(2000).optional().default(''),
     price: z.coerce.number().finite().nonnegative().max(100000),
+    condition: z.enum(['new', 'excellent', 'good', 'fair', 'poor']),
     categories: z.preprocess(
         (value) => {
             if (typeof value === 'string') {
@@ -49,6 +50,7 @@ function toListingResponse(listing: ListingRecord) {
         description: listing.description,
         price: listing.price_cents / 100,
         categories: listing.categories,
+        condition: listing.condition,
         imageUrl: listing.image_url,
         createdAt: listing.created_at
     };
@@ -66,6 +68,7 @@ export async function createListingForUser(userId: string, input: unknown, file?
             description: parsed.description,
             priceCents: Math.round(parsed.price * 100),
             categories: normalizedCategories,
+            condition: parsed.condition,
             imageUrl: uploadedImage?.imageUrl ?? null,
             imageKey: uploadedImage?.imageKey ?? null
         });
@@ -138,6 +141,7 @@ export async function updateListingForUser(userId: string, listingId: string, in
             description: parsed.description,
             priceCents: Math.round(parsed.price * 100),
             categories: normalizedCategories,
+            condition: parsed.condition,
             imageUrl: uploadedImage?.imageUrl ?? existingListing.image_url,
             imageKey: uploadedImage?.imageKey ?? existingListing.image_key
         });

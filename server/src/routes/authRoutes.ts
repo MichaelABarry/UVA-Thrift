@@ -5,6 +5,7 @@ import {
   profile,
   register,
   resendVerification,
+  updateProfile,
   verifyEmail
 } from '../controllers/authController';
 import { asyncHandler } from '../middleware/asyncHandler';
@@ -17,4 +18,5 @@ authRouter.post('/login', asyncHandler(login));
 authRouter.post('/verify-email', asyncHandler(verifyEmail));
 authRouter.post('/resend-verification', asyncHandler(resendVerification));
 authRouter.get('/profile', asyncHandler(requireVerifiedEmail), asyncHandler(profile));
+authRouter.put('/profile', asyncHandler(requireVerifiedEmail), asyncHandler(updateProfile));
 authRouter.post('/logout', asyncHandler(logout));

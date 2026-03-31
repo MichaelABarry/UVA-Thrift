@@ -12,6 +12,7 @@ const LINKS: NavLink[] = [
     { to: '/home', label: 'Home' },
     { to: '/my-items', label: 'My Items' },
     { to: '/lists', label: 'Lists' },
+    { to: '/messages', label: 'Messages' },
     { to: '/profile', label: 'Profile' },
     { to: '/listings/new', label: '+ Add Item', className: 'nav-btn-add' }
 ];

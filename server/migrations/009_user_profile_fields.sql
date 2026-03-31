@@ -1,0 +1,4 @@
+ALTER TABLE users
+ADD COLUMN IF NOT EXISTS display_name   TEXT,
+ADD COLUMN IF NOT EXISTS phone_number   TEXT,
+ADD COLUMN IF NOT EXISTS venmo_username TEXT;

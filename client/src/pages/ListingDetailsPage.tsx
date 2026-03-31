@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Link, Navigate, useParams } from 'react-router-dom';
+import { Link, Navigate, useNavigate, useParams } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { getListingDetails } from '../services/listingService';
 import {
@@ -7,6 +7,7 @@ import {
     deleteListingWatch,
     getListingWatchStatus
 } from '../services/listingWatchService';
+import { createOrGetConversation } from '../services/conversationService';
 import type { Listing } from '../types/listing';
 
 function formatDate(iso: string): string {
@@ -16,11 +17,13 @@ function formatDate(iso: string): string {
 export function ListingDetailsPage() {
     const { user, loading } = useAuth();
     const { listingId } = useParams();
+    const navigate = useNavigate();
     const [listing, setListing] = useState<Listing | null>(null);
     const [loadingListing, setLoadingListing] = useState(true);
     const [loadingWatchState, setLoadingWatchState] = useState(true);
     const [watching, setWatching] = useState(false);
     const [watchSubmitting, setWatchSubmitting] = useState(false);
+    const [messagingSubmitting, setMessagingSubmitting] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [statusMessage, setStatusMessage] = useState<string | null>(null);
 
@@ -100,6 +103,20 @@ export function ListingDetailsPage() {
         }
     }
 
+    async function handleMessageSeller() {
+        if (!listing) return;
+        setMessagingSubmitting(true);
+        setError(null);
+        try {
+            const response = await createOrGetConversation(listing.id);
+            void navigate(`/messages/${response.conversation.id}`);
+        } catch (msgError) {
+            setError(msgError instanceof Error ? msgError.message : 'Unable to start conversation.');
+        } finally {
+            setMessagingSubmitting(false);
+        }
+    }
+
     return (
         <main className="page-content">
             <div className="page-container listing-details-shell">
@@ -159,6 +176,14 @@ export function ListingDetailsPage() {
                                                 : watching
                                                     ? 'Stop Watching Item'
                                                     : 'Email Me About Changes'}
+                                    </button>
+                                    <button
+                                        className="button button-secondary"
+                                        type="button"
+                                        onClick={handleMessageSeller}
+                                        disabled={messagingSubmitting}
+                                    >
+                                        {messagingSubmitting ? 'Opening chat...' : 'Message Seller'}
                                     </button>
                                 </div>
                             ) : null}

@@ -6,6 +6,9 @@ import { HomePage } from '../pages/HomePage';
 import { ListingDetailsPage } from '../pages/ListingDetailsPage';
 import { ListsPage } from '../pages/ListsPage';
 import { MyItemsPage } from '../pages/MyItemsPage';
+import { ConversationPage } from '../pages/ConversationPage';
+import { MessagesPage } from '../pages/MessagesPage';
+import { SetupProfilePage } from '../pages/SetupProfilePage';
 import { ProfilePage } from '../pages/ProfilePage';
 import { VerifyEmailPage } from '../pages/VerifyEmailPage';
 
@@ -20,6 +23,9 @@ export function AppRouter() {
                 <Route path="/lists" element={<ListsPage />} />
                 <Route path="/listings/:listingId" element={<ListingDetailsPage />} />
                 <Route path="/my-items" element={<MyItemsPage />} />
+                <Route path="/setup-profile" element={<SetupProfilePage />} />
+                <Route path="/messages" element={<MessagesPage />} />
+                <Route path="/messages/:conversationId" element={<ConversationPage />} />
                 <Route path="/profile" element={<ProfilePage />} />
                 <Route path="/listings/new" element={<CreateListingPage />} />
                 <Route path="/listings/:listingId/edit" element={<CreateListingPage />} />

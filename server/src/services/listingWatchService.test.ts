@@ -39,6 +39,7 @@ function makeListingRecord(overrides: Partial<{
     description: string;
     price_cents: number;
     categories: string[];
+    condition: string;
     image_url: string | null;
     image_key: string | null;
     created_at: string;
@@ -51,6 +52,7 @@ function makeListingRecord(overrides: Partial<{
         description: 'Dorm-ready lamp',
         price_cents: 1800,
         categories: ['electronics'],
+        condition: 'good',
         image_url: null,
         image_key: null,
         created_at: '2026-03-23T12:00:00.000Z',

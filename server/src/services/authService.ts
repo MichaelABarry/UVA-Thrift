@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import { HttpError } from '../utils/httpError';
 import { comparePassword, hashPassword } from '../utils/password';
-import { createUser, findUserByEmail, findUserById, markUserEmailVerified } from '../db/queries/userQueries';
+import { createUser, findUserByEmail, findUserById, markUserEmailVerified, updateUserProfile } from '../db/queries/userQueries';
 import { createSession, deleteSession, getValidSessionById } from '../db/queries/sessionQueries';
 import {
   createVerificationToken,
@@ -11,6 +11,18 @@ import {
 } from '../db/queries/verificationQueries';
 import { generateToken, hashToken } from '../utils/crypto';
 import { sendVerificationEmail } from './emailService';
+
+// Helper to map a UserRecord to the standard user response shape including optional profile fields.
+function toUserResponse(user: { id: string; email: string; is_email_verified: boolean; display_name: string | null; phone_number: string | null; venmo_username: string | null }) {
+    return {
+        id: user.id,
+        email: user.email,
+        isEmailVerified: user.is_email_verified,
+        displayName: user.display_name,
+        phoneNumber: user.phone_number,
+        venmoUsername: user.venmo_username
+    };
+}
 
 // Schema for validating registration and login input. It requires an email that must be in a valid format, and a password that must be between 8 and 72 characters long.
 const authSchema = z.object({
@@ -43,11 +55,7 @@ export async function registerUser(input: unknown) {
     // Issue a verification email to the user. This will create a verification token in the database and send an email with the token.
     await issueVerificationEmail(user.id, user.email);
 
-    return {
-        id: user.id,
-        email: user.email,
-        isEmailVerified: user.is_email_verified
-    };
+    return { user: toUserResponse(user) };
 }
 
 // Service function to handle user login. It validates the input, checks the user's credentials, and if successful, creates a session and returns the session ID and user information. 
@@ -75,11 +83,7 @@ export async function loginUser(input: unknown) {
         await issueVerificationEmail(user.id, user.email);
         return {
             requiresVerification: true,
-            user: {
-                id: user.id,
-                email: user.email,
-                isEmailVerified: user.is_email_verified
-            }
+            user: toUserResponse(user)
         };
     }
 
@@ -89,11 +93,7 @@ export async function loginUser(input: unknown) {
     return {
         requiresVerification: false,
         sessionId: session.id,
-        user: {
-            id: user.id,
-            email: user.email,
-            isEmailVerified: user.is_email_verified
-        }
+        user: toUserResponse(user)
     };
 }
 
@@ -127,11 +127,7 @@ export async function getCurrentUserFromSession(sessionId: string | undefined) {
 
     return {
         sessionId: session.id,
-        user: {
-            id: user.id,
-            email: user.email,
-            isEmailVerified: user.is_email_verified
-        }
+        user: toUserResponse(user)
     };
 }
 
@@ -158,11 +154,33 @@ export async function verifyEmailToken(rawToken: string) {
         throw new HttpError('Unable to verify user.', 500);
     }
 
+    // Auto-login: create a session so the user lands on an authenticated page.
+    const session = await createSession(verifiedUser.id, new Date(Date.now() + 604_800_000));
+
     return {
-        id: verifiedUser.id,
-        email: verifiedUser.email,
-        isEmailVerified: verifiedUser.is_email_verified
+        sessionId: session.id,
+        user: toUserResponse(verifiedUser)
     };
+}
+
+const updateProfileSchema = z.object({
+    displayName:   z.string().trim().min(1).max(100).nullable().optional(),
+    phoneNumber:   z.string().trim().min(1).max(30).nullable().optional(),
+    venmoUsername: z.string().trim().min(1).max(50).nullable().optional()
+});
+
+// Service function to update a user's optional profile fields.
+export async function updateUserProfileForUser(userId: string, input: unknown) {
+    const parsed = updateProfileSchema.parse(input);
+    const updated = await updateUserProfile(userId, {
+        displayName:   parsed.displayName   ?? null,
+        phoneNumber:   parsed.phoneNumber   ?? null,
+        venmoUsername: parsed.venmoUsername ?? null
+    });
+    if (!updated) {
+        throw new HttpError('User not found.', 404);
+    }
+    return toUserResponse(updated);
 }
 
 // Service function to resend a verification email. It checks if the user exists and if their email is not already verified. If both conditions are true, it issues a new verification email.

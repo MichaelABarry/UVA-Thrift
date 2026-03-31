@@ -5,6 +5,7 @@ import {
   logoutUser,
   registerUser,
   resendVerificationEmail,
+  updateUserProfileForUser,
   verifyEmailToken
 } from '../services/authService';
 import { HttpError } from '../utils/httpError';
@@ -63,15 +64,22 @@ export async function logout(req: Request, res: Response) {
     return res.status(200).json({ message: 'Logged out.' });
 }
 
-// Endpoint handler for verifying an email.
+// Endpoint handler for verifying an email. Also creates a session so the client can proceed to profile setup without logging in again.
 export async function verifyEmail(req: Request, res: Response) {
     const token = String(req.body?.token || '').trim();
     if (!token) {
         throw new HttpError('Token is required.', 400);
     }
 
-    const user = await verifyEmailToken(token);
-    return res.status(200).json({ user, message: 'Email verified successfully.' });
+    const result = await verifyEmailToken(token);
+    setSessionCookie(res, result.sessionId);
+    return res.status(200).json({ user: result.user, message: 'Email verified successfully.' });
+}
+
+// Endpoint handler for updating the current user's optional profile fields (name, phone, venmo).
+export async function updateProfile(req: Request, res: Response) {
+    const user = await updateUserProfileForUser(req.user!.id, req.body);
+    return res.status(200).json({ user });
 }
 
 // Endpoint handler for resending a verification email
