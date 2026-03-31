@@ -28,6 +28,7 @@ describe('listingService', () => {
             description: 'Great for dorms',
             price: 18.5,
             categories: ['electronics'],
+            condition: 'good',
             image
         };
 
@@ -46,6 +47,7 @@ describe('listingService', () => {
         expect(formData.get('description')).toBe('Great for dorms');
         expect(formData.get('price')).toBe('18.5');
         expect(formData.get('categories')).toBe('["electronics"]');
+        expect(formData.get('condition')).toBe('good');
         expect(formData.get('image')).toBe(image);
     });
 
@@ -88,6 +90,7 @@ describe('listingService', () => {
             description: 'Updated description',
             price: 22,
             categories: ['electronics', 'other'],
+            condition: 'excellent',
             image
         };
 
@@ -105,6 +108,7 @@ describe('listingService', () => {
         expect(formData.get('description')).toBe('Updated description');
         expect(formData.get('price')).toBe('22');
         expect(formData.get('categories')).toBe('["electronics","other"]');
+        expect(formData.get('condition')).toBe('excellent');
         expect(formData.get('image')).toBe(image);
     });
 
