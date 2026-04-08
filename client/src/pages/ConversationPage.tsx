@@ -1,16 +1,150 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Link, Navigate, useParams } from 'react-router-dom';
+import { Circle, MapContainer, Marker, TileLayer } from 'react-leaflet';
+import L from 'leaflet';
+import 'leaflet/dist/leaflet.css';
 import { useAuth } from '../hooks/useAuth';
 import { getConversation, sendMessage } from '../services/conversationService';
 import type { Conversation, Message } from '../types/conversation';
+import { MeetupAreaPicker } from '../components/MeetupAreaPicker';
 
 const POLL_INTERVAL_MS = 5000;
+
+const MEETUP_RADIUS_METERS = 100;
+const meetupPinIcon = L.icon({
+    iconRetinaUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png',
+    iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
+    shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
+    iconSize: [25, 41],
+    iconAnchor: [12, 41],
+    popupAnchor: [1, -34],
+    shadowSize: [41, 41]
+});
 
 function formatTime(iso: string): string {
     return new Date(iso).toLocaleTimeString('en-US', {
         hour: 'numeric',
         minute: '2-digit'
     });
+}
+
+// Parse a MEETUP: encoded message into its data, or return null for normal messages.
+type MeetupData = { lat: number; lng: number; label: string };
+
+function parseMeetupMessage(content: string): MeetupData | null {
+    if (!content.startsWith('MEETUP:')) return null;
+    try {
+        return JSON.parse(content.slice('MEETUP:'.length)) as MeetupData;
+    } catch {
+        return null;
+    }
+}
+
+// Renders a chat bubble — either a regular text bubble or an embedded map bubble.
+function MessageBubble({ msg, isOwn }: { msg: Message; isOwn: boolean }) {
+    const [isMapOpen, setIsMapOpen] = useState(false);
+    const meetup = parseMeetupMessage(msg.content);
+
+    if (meetup) {
+        const delta = 0.004;
+        const bbox = `${meetup.lng - delta},${meetup.lat - delta},${meetup.lng + delta},${meetup.lat + delta}`;
+        const src = `https://www.openstreetmap.org/export/embed.html?bbox=${bbox}&layer=mapnik&marker=${meetup.lat},${meetup.lng}`;
+
+        return (
+            <>
+                <div className={`conv-bubble conv-bubble-meetup ${isOwn ? 'conv-bubble-meetup-own' : ''}`}>
+                    <p className="conv-bubble-meetup-label">
+                        📍 <strong>Meet-up area suggested</strong>
+                    </p>
+
+                    <p className="conv-bubble-meetup-street">{meetup.label}</p>
+
+                    <button
+                        type="button"
+                        className="conv-bubble-meetup-map-button"
+                        onClick={() => setIsMapOpen(true)}
+                        aria-label={`Open larger map for meetup near ${meetup.label}`}
+                    >
+                        <div className="conv-bubble-meetup-map-wrap">
+                            <iframe
+                                className="conv-bubble-meetup-map"
+                                src={src}
+                                title={`Meet-up area near ${meetup.label}`}
+                                loading="lazy"
+                            />
+                            <span className="conv-bubble-meetup-map-overlay">
+                                Click map to enlarge
+                            </span>
+                        </div>
+                    </button>
+
+                    <p className="conv-bubble-meetup-note">
+                        Orange circle = approximate area. Confirm exact spot in chat.
+                    </p>
+                </div>
+
+                {isMapOpen ? (
+                    <div
+                        className="conv-meetup-modal-backdrop"
+                        role="dialog"
+                        aria-modal="true"
+                        aria-label={`Large meetup map near ${meetup.label}`}
+                    >
+                        <div className="conv-meetup-modal">
+                            <div className="conv-meetup-modal-header">
+                                <div>
+                                    <h3 className="conv-meetup-modal-title">Meet-up Area</h3>
+                                    <p className="conv-meetup-modal-subtitle">{meetup.label}</p>
+                                </div>
+
+                                <button
+                                    type="button"
+                                    className="button button-secondary"
+                                    onClick={() => setIsMapOpen(false)}
+                                >
+                                    Close
+                                </button>
+                            </div>
+
+                            <div className="conv-meetup-modal-leaflet-wrap">
+                                <MapContainer
+                                    center={[meetup.lat, meetup.lng]}
+                                    zoom={16}
+                                    scrollWheelZoom={true}
+                                    style={{ height: '100%', width: '100%' }}
+                                >
+                                    <TileLayer
+                                        attribution="&copy; OpenStreetMap contributors"
+                                        url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                                    />
+                                    <Circle
+                                        center={[meetup.lat, meetup.lng]}
+                                        radius={MEETUP_RADIUS_METERS}
+                                        pathOptions={{
+                                            color: '#E57200',
+                                            fillColor: '#E57200',
+                                            fillOpacity: 0.18,
+                                            weight: 2
+                                        }}
+                                    />
+                                    <Marker
+                                        position={[meetup.lat, meetup.lng]}
+                                        icon={meetupPinIcon}
+                                    />
+                                </MapContainer>
+                            </div>
+
+                            <p className="conv-meetup-modal-note">
+                                Orange circle = approximate area. Confirm exact spot in chat.
+                            </p>
+                        </div>
+                    </div>
+                ) : null}
+            </>
+        );
+    }
+
+    return <div className="conv-bubble">{msg.content}</div>;
 }
 
 export function ConversationPage() {
@@ -34,10 +168,8 @@ export function ConversationPage() {
                 setLoadingConversation(false);
                 return;
             }
-
             setLoadingConversation(true);
             setError(null);
-
             try {
                 const response = await getConversation(conversationId);
                 setConversation(response.conversation);
@@ -48,7 +180,6 @@ export function ConversationPage() {
                 setLoadingConversation(false);
             }
         }
-
         void load();
     }, [conversationId, user?.isEmailVerified]);
 
@@ -69,9 +200,7 @@ export function ConversationPage() {
     useEffect(() => {
         if (!conversationId || !user?.isEmailVerified) return;
         pollRef.current = setInterval(() => { void pollMessages(); }, POLL_INTERVAL_MS);
-        return () => {
-            if (pollRef.current) clearInterval(pollRef.current);
-        };
+        return () => { if (pollRef.current) clearInterval(pollRef.current); };
     }, [conversationId, user?.isEmailVerified, pollMessages]);
 
     async function handleShareContact() {
@@ -80,7 +209,6 @@ export function ConversationPage() {
         if (sharePhone && user?.phoneNumber) lines.push(`Phone: ${user.phoneNumber}`);
         if (shareVenmo && user?.venmoUsername) lines.push(`Venmo: @${user.venmoUsername}`);
         const content = lines.join('\n');
-
         setSending(true);
         setSendError(null);
         try {
@@ -98,16 +226,30 @@ export function ConversationPage() {
     async function handleSend(e: React.FormEvent) {
         e.preventDefault();
         if (!conversationId || !messageText.trim()) return;
-
         setSending(true);
         setSendError(null);
-
         try {
             const response = await sendMessage(conversationId, messageText.trim());
             setMessages((prev) => [...prev, response.message]);
             setMessageText('');
         } catch (err) {
             setSendError(err instanceof Error ? err.message : 'Unable to send message.');
+        } finally {
+            setSending(false);
+        }
+    }
+
+    // When MeetupAreaPicker confirms a location, send it as a message immediately
+    // (the MEETUP: encoded string goes straight to the DB and renders as a map for both users).
+    async function handleLocationConfirmed(encodedMessage: string) {
+        if (!conversationId) return;
+        setSending(true);
+        setSendError(null);
+        try {
+            const response = await sendMessage(conversationId, encodedMessage);
+            setMessages((prev) => [...prev, response.message]);
+        } catch (err) {
+            setSendError(err instanceof Error ? err.message : 'Unable to send location.');
         } finally {
             setSending(false);
         }
@@ -159,6 +301,7 @@ export function ConversationPage() {
                                         View Listing
                                     </Link>
                                 </div>
+
                                 <div
                                     className="conv-messages"
                                     aria-label="Conversation messages"
@@ -186,7 +329,8 @@ export function ConversationPage() {
                                                     {!isOwn ? (
                                                         <span className="conv-sender">{msg.senderEmail}</span>
                                                     ) : null}
-                                                    <div className="conv-bubble">{msg.content}</div>
+                                                    {/* MessageBubble auto-detects MEETUP: messages and renders a map */}
+                                                    <MessageBubble msg={msg} isOwn={isOwn} />
                                                     <span className="conv-time">{formatTime(msg.createdAt)}</span>
                                                 </div>
                                             </div>
@@ -217,40 +361,46 @@ export function ConversationPage() {
                                 </form>
                             </div>
 
-                            <div className="conv-share-panel">
-                                <p className="conv-share-panel-title">Share Info</p>
-                                <label className={`conv-share-option${!user?.phoneNumber ? ' conv-share-option-disabled' : ''}`}>
-                                    <input
-                                        type="checkbox"
-                                        checked={sharePhone}
-                                        onChange={(e) => setSharePhone(e.target.checked)}
-                                        disabled={!user?.phoneNumber || sending}
-                                    />
-                                    Phone Number
-                                    {!user?.phoneNumber ? (
-                                        <span className="conv-share-hint">Add in profile</span>
-                                    ) : null}
-                                </label>
-                                <label className={`conv-share-option${!user?.venmoUsername ? ' conv-share-option-disabled' : ''}`}>
-                                    <input
-                                        type="checkbox"
-                                        checked={shareVenmo}
-                                        onChange={(e) => setShareVenmo(e.target.checked)}
-                                        disabled={!user?.venmoUsername || sending}
-                                    />
-                                    Venmo
-                                    {!user?.venmoUsername ? (
-                                        <span className="conv-share-hint">Add in profile</span>
-                                    ) : null}
-                                </label>
-                                <button
-                                    className="button button-secondary"
-                                    type="button"
-                                    disabled={(!sharePhone && !shareVenmo) || sending}
-                                    onClick={() => { void handleShareContact(); }}
-                                >
-                                    Share Contact/Payment Information
-                                </button>
+                            <div className="conv-sidebar-stack">
+                                <div className="conv-share-panel">
+                                    <p className="conv-share-panel-title">Share Info</p>
+                                    <label className={`conv-share-option${!user?.phoneNumber ? ' conv-share-option-disabled' : ''}`}>
+                                        <input
+                                            type="checkbox"
+                                            checked={sharePhone}
+                                            onChange={(e) => setSharePhone(e.target.checked)}
+                                            disabled={!user?.phoneNumber || sending}
+                                        />
+                                        Phone Number
+                                        {!user?.phoneNumber ? (
+                                            <span className="conv-share-hint">Add in profile</span>
+                                        ) : null}
+                                    </label>
+                                    <label className={`conv-share-option${!user?.venmoUsername ? ' conv-share-option-disabled' : ''}`}>
+                                        <input
+                                            type="checkbox"
+                                            checked={shareVenmo}
+                                            onChange={(e) => setShareVenmo(e.target.checked)}
+                                            disabled={!user?.venmoUsername || sending}
+                                        />
+                                        Venmo Username
+                                        {!user?.venmoUsername ? (
+                                            <span className="conv-share-hint">Add in profile</span>
+                                        ) : null}
+                                    </label>
+                                    <button
+                                        className="button button-secondary"
+                                        type="button"
+                                        disabled={(!sharePhone && !shareVenmo) || sending}
+                                        onClick={() => { void handleShareContact(); }}
+                                    >
+                                        Share Contact/Payment Information
+                                    </button>
+                                </div>
+
+                                <div className="conv-meetup-panel">
+                                    <MeetupAreaPicker onLocationConfirmed={handleLocationConfirmed} />
+                                </div>
                             </div>
                         </div>
                     </>
