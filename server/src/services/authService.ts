@@ -5,6 +5,7 @@ import { createUser, findUserByEmail, findUserById, markUserEmailVerified, updat
 import { createSession, deleteSession, getValidSessionById } from '../db/queries/sessionQueries';
 import {
   createVerificationToken,
+    getVerificationTokenByHash,
   getValidVerificationToken,
   invalidateUserVerificationTokens,
   markVerificationTokenUsed
@@ -139,8 +140,21 @@ export async function verifyEmailToken(rawToken: string) {
     const hashed = hashToken(rawToken);
     const tokenRecord = await getValidVerificationToken(hashed);
 
-    // If there is no matching token, or if the token has already been used or expired, throw an error indicating that the token is invalid or expired.
+    // If the token was already consumed but the user is verified, treat the request as a successful replay.
     if (!tokenRecord) {
+        const matchedToken = await getVerificationTokenByHash(hashed);
+        if (matchedToken?.used_at) {
+            const existingUser = await findUserById(matchedToken.user_id);
+            if (existingUser?.is_email_verified) {
+                const replayedSession = await createSession(existingUser.id, new Date(Date.now() + 604_800_000));
+                return {
+                    sessionId: replayedSession.id,
+                    user: toUserResponse(existingUser)
+                };
+            }
+        }
+
+        // If there is no matching token, or if the token has already been used or expired before verification completed, throw an error indicating that the token is invalid or expired.
         throw new HttpError('Verification token is invalid or expired.', 400);
     }
 
