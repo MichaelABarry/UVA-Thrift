@@ -1341,6 +1341,15 @@ a.button {
   margin: 0 0 1rem;
 }
 
+.profile-danger-zone {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.profile-danger-button {
+  justify-self: start;
+}
+
 /* ──────────────── Auth Page ──────────────── */
 
 .auth-brand {

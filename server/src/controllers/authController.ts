@@ -1,5 +1,6 @@
 import type { Request, Response } from 'express';
 import {
+    deleteUserAccount,
   getCurrentUserFromSession,
   loginUser,
   logoutUser,
@@ -62,6 +63,13 @@ export async function logout(req: Request, res: Response) {
     await logoutUser(req.cookies[COOKIE_NAME]);
     clearSessionCookie(res);
     return res.status(200).json({ message: 'Logged out.' });
+}
+
+// Endpoint handler for deleting the current user's account.
+export async function deleteAccount(req: Request, res: Response) {
+    await deleteUserAccount(req.user!.id);
+    clearSessionCookie(res);
+    return res.status(200).json({ message: 'Account deleted.' });
 }
 
 // Endpoint handler for verifying an email. Also creates a session so the client can proceed to profile setup without logging in again.

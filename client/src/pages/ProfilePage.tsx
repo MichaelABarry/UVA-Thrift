@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { Navigate } from 'react-router-dom';
 import { LISTING_CATEGORY_OPTIONS } from '../constants/listingCategories';
 import { useAuth } from '../hooks/useAuth';
-import { updateProfile } from '../services/authService';
+import { deleteAccount, updateProfile } from '../services/authService';
 import { deleteListingWatch, getWatchedListings } from '../services/listingWatchService';
 import {
     createNotificationPreference,
@@ -29,6 +29,7 @@ export function ProfilePage() {
     const [profileSubmitting, setProfileSubmitting] = useState(false);
     const [profileStatus, setProfileStatus] = useState<string | null>(null);
     const [profileError, setProfileError] = useState<string | null>(null);
+    const [deleteSubmitting, setDeleteSubmitting] = useState(false);
     const [loadingPreferences, setLoadingPreferences] = useState(true);
     const [submitting, setSubmitting] = useState(false);
     const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
@@ -155,6 +156,26 @@ export function ProfilePage() {
         }
     }
 
+    async function handleDeleteAccount() {
+        const confirmed = window.confirm('Delete your account permanently? This will remove your listings, alerts, watches, lists, and conversations.');
+        if (!confirmed) {
+            return;
+        }
+
+        setDeleteSubmitting(true);
+        setProfileError(null);
+        setProfileStatus(null);
+
+        try {
+            await deleteAccount();
+            setUser(null);
+        } catch (err) {
+            setProfileError(err instanceof Error ? err.message : 'Unable to delete account.');
+        } finally {
+            setDeleteSubmitting(false);
+        }
+    }
+
     return (
         <main className="page-content">
             <div className="page-container profile-layout">
@@ -243,6 +264,25 @@ export function ProfilePage() {
                             {profileSubmitting ? 'Saving...' : 'Save Contact Info'}
                         </button>
                     </form>
+
+                    <hr className="profile-divider" />
+
+                    <section className="profile-danger-zone" aria-label="Danger zone">
+                        <h2 className="section-heading">Delete Account</h2>
+                        <p className="profile-contact-hint">
+                            This permanently deletes your account and associated data.
+                        </p>
+                        <button
+                            className="button lists-danger-button profile-danger-button"
+                            type="button"
+                            onClick={() => {
+                                void handleDeleteAccount();
+                            }}
+                            disabled={deleteSubmitting}
+                        >
+                            {deleteSubmitting ? 'Deleting...' : 'Delete Account'}
+                        </button>
+                    </section>
                 </section>
 
                 <section className="profile-notification-section">

@@ -55,6 +55,12 @@ export function updateProfile(payload: { displayName?: string | null; phoneNumbe
     });
 }
 
+export function deleteAccount() {
+    return apiFetch<{ message: string }>('/api/auth/profile', {
+        method: 'DELETE'
+    });
+}
+
 export function logout() {
     return apiFetch<{ message: string }>('/api/auth/logout', {
         method: 'POST'

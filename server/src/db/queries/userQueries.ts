@@ -23,6 +23,17 @@ export async function findUserById(id: string) {
     return result.rows[0] ?? null;
 }
 
+// Deletes a user by ID. Returns the deleted user record if found, otherwise null.
+export async function deleteUserById(userId: string) {
+    const result = await pool.query<UserRecord>(
+        `DELETE FROM users
+        WHERE id = $1
+        RETURNING *`,
+        [userId]
+    );
+    return result.rows[0] ?? null;
+}
+
 // Creates a new user with the given email and password hash. Returns the created user record.
 export async function createUser(email: string, passwordHash: string) {
     const result = await pool.query<UserRecord>(

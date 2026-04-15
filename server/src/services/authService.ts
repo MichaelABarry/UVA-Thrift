@@ -1,10 +1,11 @@
 import { z } from 'zod';
 import { HttpError } from '../utils/httpError';
 import { comparePassword, hashPassword } from '../utils/password';
-import { createUser, findUserByEmail, findUserById, markUserEmailVerified, updateUserProfile } from '../db/queries/userQueries';
+import { createUser, deleteUserById, findUserByEmail, findUserById, markUserEmailVerified, updateUserProfile } from '../db/queries/userQueries';
 import { createSession, deleteSession, getValidSessionById } from '../db/queries/sessionQueries';
 import {
   createVerificationToken,
+    getVerificationTokenByHash,
   getValidVerificationToken,
   invalidateUserVerificationTokens,
   markVerificationTokenUsed
@@ -139,8 +140,21 @@ export async function verifyEmailToken(rawToken: string) {
     const hashed = hashToken(rawToken);
     const tokenRecord = await getValidVerificationToken(hashed);
 
-    // If there is no matching token, or if the token has already been used or expired, throw an error indicating that the token is invalid or expired.
+    // If the token was already consumed but the user is verified, treat the request as a successful replay.
     if (!tokenRecord) {
+        const matchedToken = await getVerificationTokenByHash(hashed);
+        if (matchedToken?.used_at) {
+            const existingUser = await findUserById(matchedToken.user_id);
+            if (existingUser?.is_email_verified) {
+                const replayedSession = await createSession(existingUser.id, new Date(Date.now() + 604_800_000));
+                return {
+                    sessionId: replayedSession.id,
+                    user: toUserResponse(existingUser)
+                };
+            }
+        }
+
+        // If there is no matching token, or if the token has already been used or expired before verification completed, throw an error.
         throw new HttpError('Verification token is invalid or expired.', 400);
     }
 
@@ -181,6 +195,14 @@ export async function updateUserProfileForUser(userId: string, input: unknown) {
         throw new HttpError('User not found.', 404);
     }
     return toUserResponse(updated);
+}
+
+// Service function to delete the current user account.
+export async function deleteUserAccount(userId: string) {
+    const deleted = await deleteUserById(userId);
+    if (!deleted) {
+        throw new HttpError('User not found.', 404);
+    }
 }
 
 // Service function to resend a verification email. It checks if the user exists and if their email is not already verified. If both conditions are true, it issues a new verification email.

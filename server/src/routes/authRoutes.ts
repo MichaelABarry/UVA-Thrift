@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import {
+  deleteAccount,
   login,
   logout,
   profile,
@@ -19,4 +20,5 @@ authRouter.post('/verify-email', asyncHandler(verifyEmail));
 authRouter.post('/resend-verification', asyncHandler(resendVerification));
 authRouter.get('/profile', asyncHandler(requireVerifiedEmail), asyncHandler(profile));
 authRouter.put('/profile', asyncHandler(requireVerifiedEmail), asyncHandler(updateProfile));
+authRouter.delete('/profile', asyncHandler(requireVerifiedEmail), asyncHandler(deleteAccount));
 authRouter.post('/logout', asyncHandler(logout));
