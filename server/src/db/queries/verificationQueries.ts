@@ -31,6 +31,16 @@ export async function getValidVerificationToken(tokenHash: string) {
     return result.rows[0] ?? null;
 }
 
+// Retrieves a verification token by its hash regardless of whether it has been used.
+export async function getVerificationTokenByHash(tokenHash: string) {
+    const result = await pool.query<VerificationTokenRecord>(
+        `SELECT * FROM email_verification_tokens
+        WHERE token_hash = $1`,
+        [tokenHash]
+    );
+    return result.rows[0] ?? null;
+}
+
 // Marks a verification token as used. Returns nothing.
 export async function markVerificationTokenUsed(tokenId: string) {
     await pool.query(

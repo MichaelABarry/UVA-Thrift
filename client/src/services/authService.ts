@@ -44,6 +44,20 @@ export function resendVerification(email: string) {
     });
 }
 
+export function forgotPassword(email: string) {
+    return apiFetch<{ message: string }>('/api/auth/forgot-password', {
+        method: 'POST',
+        body: JSON.stringify({ email })
+    });
+}
+
+export function resetPassword(token: string, password: string) {
+    return apiFetch<{ message: string }>('/api/auth/reset-password', {
+        method: 'POST',
+        body: JSON.stringify({ token, password })
+    });
+}
+
 export function getProfile() {
     return apiFetch<{ user: User }>('/api/auth/profile');
 }

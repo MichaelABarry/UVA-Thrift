@@ -1,6 +1,8 @@
 import { Router } from 'express';
 import {
+  confirmPasswordReset,
   deleteAccount,
+  forgotPassword,
   login,
   logout,
   profile,
@@ -17,6 +19,8 @@ export const authRouter = Router();
 authRouter.post('/register', asyncHandler(register));
 authRouter.post('/login', asyncHandler(login));
 authRouter.post('/verify-email', asyncHandler(verifyEmail));
+authRouter.post('/forgot-password', asyncHandler(forgotPassword));
+authRouter.post('/reset-password', asyncHandler(confirmPasswordReset));
 authRouter.post('/resend-verification', asyncHandler(resendVerification));
 authRouter.get('/profile', asyncHandler(requireVerifiedEmail), asyncHandler(profile));
 authRouter.put('/profile', asyncHandler(requireVerifiedEmail), asyncHandler(updateProfile));

@@ -225,6 +225,27 @@ a.button {
   color: var(--text-secondary);
 }
 
+.auth-inline-actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 0.25rem;
+}
+
+.auth-link-button {
+  background: transparent;
+  color: var(--navy);
+  border: none;
+  padding: 0;
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+.auth-link-button:hover:not(:disabled) {
+  background: transparent;
+  box-shadow: none;
+  color: var(--navy-light);
+}
+
 /* ──────────────── Status Messages ──────────────── */
 
 .status {

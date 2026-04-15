@@ -65,6 +65,25 @@ export async function sendVerificationEmail(toEmail: string, verificationToken: 
     });
 }
 
+export async function sendPasswordResetEmail(toEmail: string, resetToken: string) {
+    const resetUrl = `${env.APP_URL}/reset-password?token=${encodeURIComponent(resetToken)}`;
+
+    if (env.NODE_ENV === 'development' && !env.SMTP_PASS) {
+        console.log(`Password reset URL for ${toEmail}: ${resetUrl}`);
+        return;
+    }
+
+    const transporter = createTransporter();
+
+    await transporter.sendMail({
+        from: env.SMTP_FROM,
+        to: toEmail,
+        subject: 'Reset your UVA Thrift password',
+        html: `<p>We received a request to reset your UVA Thrift password.</p><p><a href="${resetUrl}">Reset Password</a></p><p>This link expires in 30 minutes. If you did not request this, you can ignore this email.</p>`,
+        text: `We received a request to reset your UVA Thrift password. Reset it here: ${resetUrl}`,
+    });
+}
+
 export async function sendListingNotificationEmail({ toEmail, listing }: ListingEmailPayload) {
     const listingUrl = `${env.APP_URL}/listings/${encodeURIComponent(listing.id)}`;
 

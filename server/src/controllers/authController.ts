@@ -4,6 +4,8 @@ import {
   getCurrentUserFromSession,
   loginUser,
   logoutUser,
+    requestPasswordReset,
+    resetPassword,
   registerUser,
   resendVerificationEmail,
   updateUserProfileForUser,
@@ -82,6 +84,17 @@ export async function verifyEmail(req: Request, res: Response) {
     const result = await verifyEmailToken(token);
     setSessionCookie(res, result.sessionId);
     return res.status(200).json({ user: result.user, message: 'Email verified successfully.' });
+}
+
+export async function forgotPassword(req: Request, res: Response) {
+    await requestPasswordReset(req.body);
+    return res.status(200).json({ message: 'If an account exists for that email, a password reset link was sent.' });
+}
+
+export async function confirmPasswordReset(req: Request, res: Response) {
+    await resetPassword(req.body);
+    clearSessionCookie(res);
+    return res.status(200).json({ message: 'Password reset successfully.' });
 }
 
 // Endpoint handler for updating the current user's optional profile fields (name, phone, venmo).

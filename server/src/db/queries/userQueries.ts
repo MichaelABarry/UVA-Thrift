@@ -63,6 +63,19 @@ export async function updateUserProfile(
     return result.rows[0] ?? null;
 }
 
+// Updates a user's password hash. Returns the updated user record.
+export async function updateUserPasswordHash(userId: string, passwordHash: string) {
+    const result = await pool.query<UserRecord>(
+        `UPDATE users
+        SET password_hash = $2,
+            updated_at = NOW()
+        WHERE id = $1
+        RETURNING *`,
+        [userId, passwordHash]
+    );
+    return result.rows[0] ?? null;
+}
+
 // Marks a user's email as verified. Returns the updated user record if successful, otherwise returns null.
 export async function markUserEmailVerified(userId: string) {
     const result = await pool.query<UserRecord>(

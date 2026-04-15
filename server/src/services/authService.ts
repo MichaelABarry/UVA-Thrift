@@ -1,8 +1,14 @@
 import { z } from 'zod';
 import { HttpError } from '../utils/httpError';
 import { comparePassword, hashPassword } from '../utils/password';
-import { createUser, deleteUserById, findUserByEmail, findUserById, markUserEmailVerified, updateUserProfile } from '../db/queries/userQueries';
-import { createSession, deleteSession, getValidSessionById } from '../db/queries/sessionQueries';
+import { createUser, deleteUserById, findUserByEmail, findUserById, markUserEmailVerified, updateUserPasswordHash, updateUserProfile } from '../db/queries/userQueries';
+import { createSession, deleteSession, deleteSessionsForUser, getValidSessionById } from '../db/queries/sessionQueries';
+import {
+        createPasswordResetToken,
+        getValidPasswordResetToken,
+        invalidateUserPasswordResetTokens,
+        markPasswordResetTokenUsed
+} from '../db/queries/passwordResetQueries';
 import {
   createVerificationToken,
     getVerificationTokenByHash,
@@ -11,7 +17,7 @@ import {
   markVerificationTokenUsed
 } from '../db/queries/verificationQueries';
 import { generateToken, hashToken } from '../utils/crypto';
-import { sendVerificationEmail } from './emailService';
+import { sendPasswordResetEmail, sendVerificationEmail } from './emailService';
 
 // Helper to map a UserRecord to the standard user response shape including optional profile fields.
 function toUserResponse(user: { id: string; email: string; is_email_verified: boolean; display_name: string | null; phone_number: string | null; venmo_username: string | null }) {
@@ -28,6 +34,15 @@ function toUserResponse(user: { id: string; email: string; is_email_verified: bo
 // Schema for validating registration and login input. It requires an email that must be in a valid format, and a password that must be between 8 and 72 characters long.
 const authSchema = z.object({
     email: z.string().email(),
+    password: z.string().min(8).max(72)
+});
+
+const forgotPasswordSchema = z.object({
+    email: z.string().email()
+});
+
+const resetPasswordSchema = z.object({
+    token: z.string().trim().min(1),
     password: z.string().min(8).max(72)
 });
 
@@ -203,6 +218,45 @@ export async function deleteUserAccount(userId: string) {
     if (!deleted) {
         throw new HttpError('User not found.', 404);
     }
+}
+
+export async function requestPasswordReset(input: unknown) {
+    const parsed = forgotPasswordSchema.parse(input);
+    const normalizedEmail = parsed.email.toLowerCase().trim();
+    const user = await findUserByEmail(normalizedEmail);
+
+    if (!user) {
+        return;
+    }
+
+    const rawToken = generateToken();
+    const hashedToken = hashToken(rawToken);
+    const expiresAt = new Date(Date.now() + 1_800_000);
+
+    await invalidateUserPasswordResetTokens(user.id);
+    await createPasswordResetToken(user.id, hashedToken, expiresAt);
+    await sendPasswordResetEmail(user.email, rawToken);
+}
+
+export async function resetPassword(input: unknown) {
+    const parsed = resetPasswordSchema.parse(input);
+    const hashedToken = hashToken(parsed.token);
+    const tokenRecord = await getValidPasswordResetToken(hashedToken);
+
+    if (!tokenRecord) {
+        throw new HttpError('Password reset link is invalid or expired.', 400);
+    }
+
+    const passwordHash = await hashPassword(parsed.password);
+    const updatedUser = await updateUserPasswordHash(tokenRecord.user_id, passwordHash);
+
+    if (!updatedUser) {
+        throw new HttpError('User not found.', 404);
+    }
+
+    await markPasswordResetTokenUsed(tokenRecord.id);
+    await invalidateUserPasswordResetTokens(tokenRecord.user_id);
+    await deleteSessionsForUser(tokenRecord.user_id);
 }
 
 // Service function to resend a verification email. It checks if the user exists and if their email is not already verified. If both conditions are true, it issues a new verification email.

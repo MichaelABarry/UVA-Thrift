@@ -10,6 +10,7 @@ import { ConversationPage } from '../pages/ConversationPage';
 import { MessagesPage } from '../pages/MessagesPage';
 import { SetupProfilePage } from '../pages/SetupProfilePage';
 import { ProfilePage } from '../pages/ProfilePage';
+import { ResetPasswordPage } from '../pages/ResetPasswordPage';
 import { VerifyEmailPage } from '../pages/VerifyEmailPage';
 
 // Sets up the main application routing.
@@ -18,6 +19,7 @@ export function AppRouter() {
         <Routes>
             <Route path="/" element={<AuthPage />} />
             <Route path="/verify-email" element={<VerifyEmailPage />} />
+            <Route path="/reset-password" element={<ResetPasswordPage />} />
             <Route element={<ProtectedLayout />}>
                 <Route path="/home" element={<HomePage />} />
                 <Route path="/lists" element={<ListsPage />} />
