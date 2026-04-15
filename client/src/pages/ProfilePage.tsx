@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { Navigate } from 'react-router-dom';
 import { LISTING_CATEGORY_OPTIONS } from '../constants/listingCategories';
 import { useAuth } from '../hooks/useAuth';
-import { deleteAccount, updateProfile } from '../services/authService';
+import { deleteAccount, logout, updateProfile } from '../services/authService';
 import { deleteListingWatch, getWatchedListings } from '../services/listingWatchService';
 import {
     createNotificationPreference,
@@ -29,6 +29,7 @@ export function ProfilePage() {
     const [profileSubmitting, setProfileSubmitting] = useState(false);
     const [profileStatus, setProfileStatus] = useState<string | null>(null);
     const [profileError, setProfileError] = useState<string | null>(null);
+    const [logoutSubmitting, setLogoutSubmitting] = useState(false);
     const [deleteSubmitting, setDeleteSubmitting] = useState(false);
     const [loadingPreferences, setLoadingPreferences] = useState(true);
     const [submitting, setSubmitting] = useState(false);
@@ -176,6 +177,21 @@ export function ProfilePage() {
         }
     }
 
+    async function handleLogout() {
+        setLogoutSubmitting(true);
+        setProfileError(null);
+        setProfileStatus(null);
+
+        try {
+            await logout();
+            setUser(null);
+        } catch (err) {
+            setProfileError(err instanceof Error ? err.message : 'Unable to log out.');
+        } finally {
+            setLogoutSubmitting(false);
+        }
+    }
+
     return (
         <main className="page-content">
             <div className="page-container profile-layout">
@@ -264,6 +280,27 @@ export function ProfilePage() {
                             {profileSubmitting ? 'Saving...' : 'Save Contact Info'}
                         </button>
                     </form>
+
+                    <hr className="profile-divider" />
+
+                    <section className="profile-account-section" aria-label="Account actions">
+                        <h2 className="section-heading">Account</h2>
+                        <p className="profile-contact-hint">
+                            End your current session on this device.
+                        </p>
+                        <div className="profile-account-actions">
+                            <button
+                                className="button button-secondary"
+                                type="button"
+                                onClick={() => {
+                                    void handleLogout();
+                                }}
+                                disabled={logoutSubmitting}
+                            >
+                                {logoutSubmitting ? 'Logging Out...' : 'Log Out'}
+                            </button>
+                        </div>
+                    </section>
 
                     <hr className="profile-divider" />
 

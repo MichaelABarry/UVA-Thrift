@@ -1,6 +1,4 @@
 import { Link, useLocation } from 'react-router-dom';
-import { useAuth } from '../hooks/useAuth';
-import { logout } from '../services/authService';
 
 type NavLink = {
     to: string;
@@ -19,12 +17,6 @@ const LINKS: NavLink[] = [
 
 export function TopNav() {
     const location = useLocation();
-    const { setUser } = useAuth();
-
-    async function handleLogout() {
-        await logout();
-        setUser(null);
-    }
 
     return (
         <header className="top-nav" aria-label="Top navigation">
@@ -46,9 +38,6 @@ export function TopNav() {
                             </Link>
                         );
                     })}
-                    <button className="button nav-btn-logout" type="button" onClick={handleLogout}>
-                        Log Out
-                    </button>
                 </nav>
             </div>
         </header>
