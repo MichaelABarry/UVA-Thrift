@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Link, Navigate, useNavigate, useParams } from 'react-router-dom';
+import { Navigate, useNavigate, useParams } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { getListingDetails } from '../services/listingService';
 import {
@@ -124,9 +124,6 @@ export function ListingDetailsPage() {
                     <div>
                         <h1 className="home-heading">Listing Details</h1>
                     </div>
-                    <Link className="button button-secondary" to="/home">
-                        Back to Marketplace
-                    </Link>
                 </div>
 
                 {loadingListing ? <p className="loading-spinner">Loading listing details...</p> : null}

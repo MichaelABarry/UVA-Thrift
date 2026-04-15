@@ -585,11 +585,37 @@ a.button {
   transition: transform var(--transition), box-shadow var(--transition);
   display: flex;
   flex-direction: column;
+  position: relative;
 }
 
 .listing-card:hover {
   transform: translateY(-2px);
   box-shadow: var(--shadow);
+}
+
+.listing-add-button {
+  position: absolute;
+  top: 0.85rem;
+  right: 0.85rem;
+  width: 2.2rem;
+  height: 2.2rem;
+  padding: 0;
+  border-radius: 9999px;
+  background: rgba(255, 255, 255, 0.94);
+  color: var(--navy);
+  border: 1px solid rgba(35, 45, 75, 0.12);
+  box-shadow: var(--shadow-sm);
+  font-size: 1.25rem;
+  line-height: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 2;
+}
+
+.listing-add-button:hover:not(:disabled) {
+  background: #fff;
+  color: var(--navy-light);
 }
 
 .listing-image-frame,
@@ -721,17 +747,66 @@ a.button {
 }
 
 .listing-list-picker {
-  margin-top: 0.75rem;
-  padding-top: 0.75rem;
-  border-top: 1px solid var(--border);
+  position: absolute;
+  top: 3.65rem;
+  right: 0.85rem;
+  width: min(240px, calc(100% - 1.7rem));
+  padding: 0.9rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--bg-card);
+  box-shadow: var(--shadow-lg);
   display: grid;
   gap: 0.65rem;
+  z-index: 3;
 }
 
 .listing-list-picker-empty {
   margin: 0;
   color: var(--text-secondary);
   font-size: 0.88rem;
+}
+
+.listing-list-picker-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.listing-list-picker-label {
+  margin: 0;
+}
+
+.listing-list-picker-options {
+  display: grid;
+  gap: 0.5rem;
+  max-height: 180px;
+  overflow: auto;
+}
+
+.listing-list-picker-option {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  padding: 0.45rem 0.55rem;
+  border-radius: var(--radius-sm);
+  background: #f7f8fc;
+  color: var(--text);
+  font-size: 0.88rem;
+  cursor: pointer;
+}
+
+.listing-list-picker-option:hover {
+  background: #eef1f8;
+}
+
+.listing-list-picker-option input {
+  accent-color: var(--navy);
+}
+
+.listing-list-picker-actions {
+  display: flex;
+  gap: 0.65rem;
 }
 
 /* ──────────────── Lists Page ──────────────── */

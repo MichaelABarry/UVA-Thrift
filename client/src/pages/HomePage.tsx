@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Link, Navigate } from 'react-router-dom';
+import { Link, Navigate, useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { getListings } from '../services/listingService';
 import { addItemToList, getLists as getUserLists } from '../services/listService';
@@ -16,6 +16,7 @@ function formatDate(iso: string): string {
 
 export function HomePage() {
     const { user, loading } = useAuth();
+    const navigate = useNavigate();
     const [listings, setListings] = useState<Listing[]>([]);
     const [lists, setLists] = useState<ItemList[]>([]);
     const [searchQuery, setSearchQuery] = useState('');
@@ -31,7 +32,7 @@ export function HomePage() {
     const [listError, setListError] = useState<string | null>(null);
     const [listStatus, setListStatus] = useState<string | null>(null);
     const [expandedListPickerId, setExpandedListPickerId] = useState<string | null>(null);
-    const [selectedListIds, setSelectedListIds] = useState<Record<string, string>>({});
+    const [selectedListIds, setSelectedListIds] = useState<Record<string, string[]>>({});
     const [pendingSaveListingId, setPendingSaveListingId] = useState<string | null>(null);
 
     useEffect(() => {
@@ -157,11 +158,25 @@ export function HomePage() {
         return <Navigate to="/" replace />;
     }
 
-    async function handleAddToList(listing: Listing) {
-        const selectedListId = selectedListIds[listing.id] ?? lists[0]?.id;
+    function toggleListSelection(listingId: string, listId: string) {
+        setSelectedListIds((current) => {
+            const selectedForListing = current[listingId] ?? [];
+            const nextSelection = selectedForListing.includes(listId)
+                ? selectedForListing.filter((id) => id !== listId)
+                : [...selectedForListing, listId];
 
-        if (!selectedListId) {
-            setListError('Create a list before saving items.');
+            return {
+                ...current,
+                [listingId]: nextSelection
+            };
+        });
+    }
+
+    async function handleAddToList(listing: Listing) {
+        const chosenListIds = selectedListIds[listing.id] ?? [];
+
+        if (!chosenListIds.length) {
+            setListError('Select at least one list before saving items.');
             return;
         }
 
@@ -170,10 +185,15 @@ export function HomePage() {
         setListStatus(null);
 
         try {
-            const response = await addItemToList(selectedListId, listing.id);
-            setLists((current) => current.map((list) => (list.id === response.list.id ? response.list : list)));
+            const responses = await Promise.all(
+                chosenListIds.map((listId) => addItemToList(listId, listing.id))
+            );
+
+            const updatedLists = new Map(responses.map((response) => [response.list.id, response.list]));
+            setLists((current) => current.map((list) => updatedLists.get(list.id) ?? list));
             setExpandedListPickerId(null);
-            setListStatus(`Saved ${listing.name} to ${response.list.name}.`);
+            setSelectedListIds((current) => ({ ...current, [listing.id]: [] }));
+            setListStatus(`Saved ${listing.name} to ${responses.map((response) => response.list.name).join(', ')}.`);
         } catch (saveError) {
             setListError(saveError instanceof Error ? saveError.message : 'Unable to save that item to your list.');
         } finally {
@@ -349,7 +369,36 @@ export function HomePage() {
                                         : listing.description;
 
                                 return (
-                                    <article className="listing-card" key={listing.id}>
+                                    <article
+                                        className="listing-card listing-card-clickable"
+                                        key={listing.id}
+                                        role="link"
+                                        tabIndex={0}
+                                        onClick={() => navigate(`/listings/${listing.id}`)}
+                                        onKeyDown={(event) => {
+                                            if (event.key === 'Enter' || event.key === ' ') {
+                                                event.preventDefault();
+                                                navigate(`/listings/${listing.id}`);
+                                            }
+                                        }}
+                                    >
+                                        <button
+                                            className="button listing-add-button"
+                                            type="button"
+                                            aria-label={`Add ${listing.name} to a list`}
+                                            onClick={(event) => {
+                                                event.stopPropagation();
+                                                setListError(null);
+                                                setListStatus(null);
+                                                setExpandedListPickerId((current) =>
+                                                    current === listing.id ? null : listing.id
+                                                );
+                                            }}
+                                            disabled={loadingLists}
+                                        >
+                                            +
+                                        </button>
+
                                         {listing.imageUrl ? (
                                             <div className="listing-image-frame">
                                                 <img className="listing-image" src={listing.imageUrl} alt={listing.name} />
@@ -374,60 +423,49 @@ export function HomePage() {
                                             <span className="listing-date">{formatDate(listing.createdAt)}</span>
                                         </div>
 
-                                        <div className="listing-actions listing-actions-stack">
-                                            <Link className="button listing-action-button" to={`/listings/${listing.id}`}>
-                                                View Details
-                                            </Link>
-                                            <button
-                                                className="button button-secondary listing-action-button"
-                                                type="button"
-                                                onClick={() =>
-                                                    setExpandedListPickerId((current) =>
-                                                        current === listing.id ? null : listing.id
-                                                    )
-                                                }
-                                                disabled={loadingLists}
-                                            >
-                                                {loadingLists ? 'Loading lists...' : 'Add to List'}
-                                            </button>
-                                        </div>
-
                                         {expandedListPickerId === listing.id ? (
-                                            <div className="listing-list-picker">
+                                            <div className="listing-list-picker" onClick={(event) => event.stopPropagation()}>
                                                 {lists.length ? (
                                                     <>
-                                                        <label className="sidebar-label" htmlFor={`list-select-${listing.id}`}>
-                                                            Save to
-                                                        </label>
-                                                        <select
-                                                            id={`list-select-${listing.id}`}
-                                                            className="input sidebar-input"
-                                                            value={selectedListIds[listing.id] ?? lists[0]?.id ?? ''}
-                                                            onChange={(event) =>
-                                                                setSelectedListIds((current) => ({
-                                                                    ...current,
-                                                                    [listing.id]: event.target.value
-                                                                }))
-                                                            }
-                                                        >
+                                                        <div className="listing-list-picker-header">
+                                                            <span className="sidebar-label listing-list-picker-label">Save to lists</span>
+                                                        </div>
+                                                        <div className="listing-list-picker-options">
                                                             {lists.map((list) => (
-                                                                <option key={list.id} value={list.id}>
-                                                                    {list.name}
-                                                                </option>
+                                                                <label className="listing-list-picker-option" key={list.id}>
+                                                                    <input
+                                                                        type="checkbox"
+                                                                        checked={(selectedListIds[listing.id] ?? []).includes(list.id)}
+                                                                        onChange={() => toggleListSelection(listing.id, list.id)}
+                                                                    />
+                                                                    <span>{list.name}</span>
+                                                                </label>
                                                             ))}
-                                                        </select>
-                                                        <button
-                                                            className="button button-accent"
-                                                            type="button"
-                                                            onClick={() => handleAddToList(listing)}
-                                                            disabled={pendingSaveListingId === listing.id}
-                                                        >
-                                                            {pendingSaveListingId === listing.id ? 'Saving...' : 'Save Item'}
-                                                        </button>
+                                                        </div>
+                                                        <div className="listing-list-picker-actions">
+                                                            <button
+                                                                className="button button-secondary"
+                                                                type="button"
+                                                                onClick={() => {
+                                                                    setExpandedListPickerId(null);
+                                                                    setSelectedListIds((current) => ({ ...current, [listing.id]: [] }));
+                                                                }}
+                                                            >
+                                                                Cancel
+                                                            </button>
+                                                            <button
+                                                                className="button button-accent"
+                                                                type="button"
+                                                                onClick={() => handleAddToList(listing)}
+                                                                disabled={pendingSaveListingId === listing.id}
+                                                            >
+                                                                {pendingSaveListingId === listing.id ? 'Saving...' : 'Save'}
+                                                            </button>
+                                                        </div>
                                                     </>
                                                 ) : (
                                                     <p className="listing-list-picker-empty">
-                                                        You need a list first. <Link to="/lists">Create one here.</Link>
+                                                        You need a list first. <Link to="/profile?section=lists">Create one here.</Link>
                                                     </p>
                                                 )}
                                             </div>
