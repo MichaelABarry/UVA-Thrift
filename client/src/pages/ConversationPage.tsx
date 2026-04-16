@@ -244,7 +244,7 @@ export function ConversationPage() {
                                     ) : null}
                                 </label>
                                 <button
-                                    className="button button-secondary"
+                                    className="button button-accent"
                                     type="button"
                                     disabled={(!sharePhone && !shareVenmo) || sending}
                                     onClick={() => { void handleShareContact(); }}

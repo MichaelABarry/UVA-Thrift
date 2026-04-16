@@ -103,17 +103,7 @@ export function CreateListingPage() {
             }
 
             await createListing(payload);
-            setName('');
-            setDescription('');
-            setDescriptionOpen(false);
-            setPrice('');
-            setCondition('good');
-            setCategories([]);
-            setSelectedImage(null);
-            if (fileInputRef.current) {
-                fileInputRef.current.value = '';
-            }
-            setMessage('Listing created successfully.');
+            navigate('/profile?section=items');
         } catch (submitError) {
             setError(
                 submitError instanceof Error
@@ -131,7 +121,7 @@ export function CreateListingPage() {
         <main className="page page-content">
             <div className="cl-page">
                 <div className="cl-header">
-                    <h1 className="cl-title">{isEditing ? 'Edit Item' : 'Add Item'}</h1>
+                    <h1 className="cl-title">{isEditing ? 'Edit Item' : 'New Item'}</h1>
                     <p className="cl-subtitle">
                         {isEditing ? 'Update your listing details before other Hoos see it.' : 'List something for fellow Hoos to find.'}
                     </p>

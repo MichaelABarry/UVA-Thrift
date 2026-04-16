@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { Fragment, useEffect, useMemo, useState } from 'react';
 import type { FormEvent } from 'react';
 import { Link, Navigate, useSearchParams } from 'react-router-dom';
 import { LISTING_CATEGORY_OPTIONS } from '../constants/listingCategories';
@@ -95,6 +95,7 @@ export function ProfilePage() {
     const [isListModalOpen, setIsListModalOpen] = useState(false);
 
     const requestedSection = searchParams.get('section');
+    const requestedListId = searchParams.get('list');
     const activeSection: ProfileSection = isProfileSection(requestedSection)
         ? requestedSection
         : 'general';
@@ -168,7 +169,13 @@ export function ProfilePage() {
             try {
                 const response = await getLists();
                 setLists(response.lists);
-                setSelectedListId((current) => current ?? response.lists[0]?.id ?? null);
+                const requestedId = requestedListId;
+                const defaultId = response.lists[0]?.id ?? null;
+                const nextSelectedId = response.lists.some((list) => list.id === requestedId)
+                    ? requestedId
+                    : defaultId;
+
+                setSelectedListId(nextSelectedId);
             } catch (loadError) {
                 setListsError(loadError instanceof Error ? loadError.message : 'Unable to load your lists.');
             } finally {
@@ -177,7 +184,31 @@ export function ProfilePage() {
         }
 
         void loadLists();
-    }, [user?.isEmailVerified]);
+    }, [requestedListId, user?.isEmailVerified]);
+
+    useEffect(() => {
+        if (activeSection !== 'lists' || loadingLists) {
+            return;
+        }
+
+        const validRequestedList = requestedListId && lists.some((list) => list.id === requestedListId);
+        const fallbackListId = lists[0]?.id ?? null;
+        const nextListId = validRequestedList ? requestedListId : fallbackListId;
+
+        setSelectedListId(nextListId);
+
+        if (nextListId === requestedListId) {
+            return;
+        }
+
+        const next = new URLSearchParams(searchParams);
+        if (nextListId) {
+            next.set('list', nextListId);
+        } else {
+            next.delete('list');
+        }
+        setSearchParams(next, { replace: true });
+    }, [activeSection, lists, loadingLists, requestedListId, searchParams, setSearchParams]);
 
     const selectedList = useMemo(
         () => lists.find((list) => list.id === selectedListId) ?? null,
@@ -193,6 +224,18 @@ export function ProfilePage() {
     function setSection(section: ProfileSection) {
         const next = new URLSearchParams(searchParams);
         next.set('section', section);
+        if (section !== 'lists') {
+            next.delete('list');
+        } else if (!next.get('list') && lists[0]?.id) {
+            next.set('list', lists[0].id);
+        }
+        setSearchParams(next, { replace: true });
+    }
+
+    function selectList(listId: string) {
+        const next = new URLSearchParams(searchParams);
+        next.set('section', 'lists');
+        next.set('list', listId);
         setSearchParams(next, { replace: true });
     }
 
@@ -468,24 +511,63 @@ export function ProfilePage() {
                 <aside className="profile-sidebar-shell" aria-label="Profile navigation">
                     <div className="card profile-sidebar-card">
                         <div className="profile-header profile-sidebar-header">
-                            <div className="profile-avatar" aria-hidden="true">{getInitial(user?.email)}</div>
+                            <div className="profile-avatar" aria-hidden="true">{getInitial(user?.displayName ?? user?.email)}</div>
                             <div className="profile-info">
-                                <h1 className="profile-name">{email.split('@')[0]}</h1>
+                                <h1 className="profile-name">{user?.displayName || email.split('@')[0]}</h1>
                                 <p className="profile-email-sub">{email}</p>
                             </div>
                         </div>
 
                         <nav className="profile-section-nav">
                             {SECTION_OPTIONS.map((section) => (
-                                <button
-                                    key={section.id}
-                                    className={`profile-section-link ${activeSection === section.id ? 'profile-section-link-active' : ''}`}
-                                    type="button"
-                                    onClick={() => setSection(section.id)}
-                                >
-                                    <span className="profile-section-link-label">{section.label}</span>
-                                    <span className="profile-section-link-description">{section.description}</span>
-                                </button>
+                                <Fragment key={section.id}>
+                                    <button
+                                        className={`profile-section-link ${activeSection === section.id ? 'profile-section-link-active' : ''}`}
+                                        type="button"
+                                        onClick={() => setSection(section.id)}
+                                    >
+                                        <span className="profile-section-link-label">{section.label}</span>
+                                        <span className="profile-section-link-description">{section.description}</span>
+                                    </button>
+                                    {section.id === 'lists' && activeSection === 'lists' ? (
+                                        <div className="profile-section-subnav" aria-label="Your saved lists">
+                                            {loadingLists ? (
+                                                <span className="profile-section-subnav-note">Loading lists...</span>
+                                            ) : !lists.length ? (
+                                                <>
+                                                    <button
+                                                        className="profile-section-sublink profile-section-sublink-create"
+                                                        type="button"
+                                                        onClick={openCreateListModal}
+                                                    >
+                                                        <span className="profile-section-sublink-label">+ New List...</span>
+                                                    </button>
+                                                </>
+                                            ) : (
+                                                <>
+                                                    {lists.map((list) => (
+                                                        <button
+                                                            key={list.id}
+                                                            className={`profile-section-sublink ${selectedListId === list.id ? 'profile-section-sublink-active' : ''}`}
+                                                            type="button"
+                                                            onClick={() => selectList(list.id)}
+                                                        >
+                                                            <span className="profile-section-sublink-label">{list.name}</span>
+                                                            <span className="profile-section-sublink-count">{list.items.length}</span>
+                                                        </button>
+                                                    ))}
+                                                    <button
+                                                        className="profile-section-sublink profile-section-sublink-create"
+                                                        type="button"
+                                                        onClick={openCreateListModal}
+                                                    >
+                                                        <span className="profile-section-sublink-label">+ New List...</span>
+                                                    </button>
+                                                </>
+                                            )}
+                                        </div>
+                                    ) : null}
+                                </Fragment>
                             ))}
                         </nav>
 
@@ -568,9 +650,6 @@ export function ProfilePage() {
                                     <h2 className="card-title">My Items</h2>
                                     <p className="card-subtitle">Manage the items you have listed for other UVA students.</p>
                                 </div>
-                                <Link className="button button-accent" to="/listings/new">
-                                    Add Another Item
-                                </Link>
                             </div>
 
                             {loadingListings ? <p className="loading-spinner">Loading your items...</p> : null}
@@ -578,7 +657,7 @@ export function ProfilePage() {
 
                             {!loadingListings && !itemsError && !listings.length ? (
                                 <div className="card profile-panel-card empty-state my-items-empty-state">
-                                    <div className="empty-state-icon">🛍️</div>
+
                                     <h2 className="empty-state-title">You have not listed anything yet</h2>
                                     <p className="empty-state-body">
                                         Start with one item, then come back here anytime to edit or remove it.
@@ -645,9 +724,6 @@ export function ProfilePage() {
                                     <h2 className="card-title">Lists</h2>
                                     <p className="card-subtitle">Build themed collections like Dorm Room, First Apartment, or Lab Essentials.</p>
                                 </div>
-                                <button className="button button-accent" type="button" onClick={openCreateListModal}>
-                                    New List
-                                </button>
                             </div>
 
                             {listsError ? <p className="status status-error">{listsError}</p> : null}
@@ -655,138 +731,105 @@ export function ProfilePage() {
                             {loadingLists ? <p className="loading-spinner">Loading your lists...</p> : null}
 
                             {!loadingLists ? (
-                                <div className="lists-layout profile-lists-layout">
-                                    <aside className="lists-sidebar" aria-label="Your lists">
-                                        <div className="lists-sidebar-header">
-                                            <h2 className="section-heading">Saved Lists</h2>
-                                            <span className="lists-count">{lists.length}</span>
+                                <div className="lists-detail-panel profile-lists-panel">
+                                    <div className="lists-detail-header profile-section-header-row">
+                                        <div>
+                                            <h2 className="section-heading">{selectedList ? selectedList.name : ''}</h2>
+                                            <p className="card-subtitle">
+                                                {selectedList
+                                                    ? selectedList.description || `Updated ${formatDate(selectedList.updatedAt)}`
+                                                    : ''}
+                                            </p>
                                         </div>
 
-                                        {!lists.length ? (
-                                            <div className="empty-state lists-sidebar-empty">
-                                                <h2 className="empty-state-title">No lists yet</h2>
-                                                <p className="empty-state-body">
-                                                    Use the button above to create one, then save items from the marketplace into it.
-                                                </p>
+                                        {selectedList ? (
+                                            <div className="profile-inline-actions">
+                                                <button className="button button-secondary" type="button" onClick={() => openEditListModal(selectedList)}>
+                                                    Edit List
+                                                </button>
+                                                <button
+                                                    className="button lists-danger-button"
+                                                    type="button"
+                                                    onClick={() => {
+                                                        void handleDeleteList(selectedList.id);
+                                                    }}
+                                                    disabled={pendingListDeleteId === selectedList.id}
+                                                >
+                                                    {pendingListDeleteId === selectedList.id ? 'Deleting...' : 'Delete List'}
+                                                </button>
                                             </div>
-                                        ) : (
-                                            <div className="lists-stack">
-                                                {lists.map((list) => (
-                                                    <button
-                                                        key={list.id}
-                                                        className={`lists-list-card ${selectedListId === list.id ? 'lists-list-card-active' : ''}`}
-                                                        type="button"
-                                                        onClick={() => setSelectedListId(list.id)}
-                                                    >
-                                                        <div className="lists-list-card-header">
-                                                            <h3 className="lists-list-card-title">{list.name}</h3>
-                                                            <span className="lists-list-card-count">
-                                                                {list.items.length} item{list.items.length === 1 ? '' : 's'}
-                                                            </span>
+                                        ) : null}
+                                    </div>
+
+                                    {!lists.length ? (
+                                        <div className="empty-state lists-detail-empty">
+                                            <h2 className="empty-state-title">No lists yet</h2>
+                                            <p className="empty-state-body">
+                                                Click "+ New List" in the sidebar to create one.
+                                            </p>
+                                        </div>
+                                    ) : !selectedList ? (
+                                        <div className="empty-state lists-detail-empty">
+                                            <h2 className="empty-state-title">Pick a list to inspect it</h2>
+                                            <p className="empty-state-body">
+                                                Select a list from the left sidebar, then add items from the marketplace on the <Link to="/home">Home</Link> page.
+                                            </p>
+                                        </div>
+                                    ) : !selectedList.items.length ? (
+                                        <div className="empty-state lists-detail-empty">
+                                            <h2 className="empty-state-title">This list is empty</h2>
+                                            <p className="empty-state-body">
+                                                Browse the <Link to="/home">marketplace</Link> and use the add-to-list control on any item card.
+                                            </p>
+                                        </div>
+                                    ) : (
+                                        <div className="listing-grid" aria-label={`${selectedList.name} items`}>
+                                            {selectedList.items.map((item) => (
+                                                <article className="listing-card" key={`${selectedList.id}-${item.id}`}>
+                                                    <Link className="listing-card-link" to={`/listings/${item.id}`}>
+                                                        {item.imageUrl ? (
+                                                            <div className="listing-image-frame">
+                                                                <img className="listing-image" src={item.imageUrl} alt={item.name} />
+                                                            </div>
+                                                        ) : (
+                                                            <div className="listing-image-placeholder">No image</div>
+                                                        )}
+
+                                                        <div className="listing-header">
+                                                            <h3 className="listing-title">{item.name}</h3>
+                                                            <p className="listing-price">${item.price.toFixed(2)}</p>
                                                         </div>
-                                                        <p className="lists-list-card-body">
-                                                            {list.description || 'No description yet.'}
-                                                        </p>
-                                                    </button>
-                                                ))}
-                                            </div>
-                                        )}
-                                    </aside>
 
-                                    <section className="lists-main">
-                                        <div className="lists-detail-panel">
-                                            <div className="lists-detail-header profile-section-header-row">
-                                                <div>
-                                                    <h2 className="section-heading">Selected List</h2>
-                                                    <p className="card-subtitle">
-                                                        {selectedList
-                                                            ? `Updated ${formatDate(selectedList.updatedAt)}`
-                                                            : 'Choose a list to review the items you have saved.'}
-                                                    </p>
-                                                </div>
+                                                        <p className="listing-description">{item.description}</p>
 
-                                                {selectedList ? (
-                                                    <div className="profile-inline-actions">
-                                                        <button className="button button-secondary" type="button" onClick={() => openEditListModal(selectedList)}>
-                                                            Edit List
-                                                        </button>
+                                                        <div className="listing-footer">
+                                                            <div className="listing-categories">
+                                                                {item.categories.map((category) => (
+                                                                    <span className="listing-category-chip" key={`${item.id}-${category}`}>
+                                                                        {category}
+                                                                    </span>
+                                                                ))}
+                                                            </div>
+                                                            <span className="listing-date">{formatDate(item.createdAt)}</span>
+                                                        </div>
+                                                    </Link>
+
+                                                    <div className="listing-actions">
                                                         <button
-                                                            className="button lists-danger-button"
+                                                            className="button listing-action-button lists-danger-button"
                                                             type="button"
                                                             onClick={() => {
-                                                                void handleDeleteList(selectedList.id);
+                                                                void handleRemoveItem(selectedList.id, item.id);
                                                             }}
-                                                            disabled={pendingListDeleteId === selectedList.id}
+                                                            disabled={pendingListRemoveId === item.id}
                                                         >
-                                                            {pendingListDeleteId === selectedList.id ? 'Deleting...' : 'Delete List'}
+                                                            {pendingListRemoveId === item.id ? 'Removing...' : 'Remove from List'}
                                                         </button>
                                                     </div>
-                                                ) : null}
-                                            </div>
-
-                                            {!selectedList ? (
-                                                <div className="empty-state lists-detail-empty">
-                                                    <h2 className="empty-state-title">Pick a list to inspect it</h2>
-                                                    <p className="empty-state-body">
-                                                        Use the New List button above, then add items from the marketplace on the <Link to="/home">Home</Link> page.
-                                                    </p>
-                                                </div>
-                                            ) : !selectedList.items.length ? (
-                                                <div className="empty-state lists-detail-empty">
-                                                    <div className="empty-state-icon">📭</div>
-                                                    <h2 className="empty-state-title">This list is empty</h2>
-                                                    <p className="empty-state-body">
-                                                        Browse the <Link to="/home">marketplace</Link> and use the add-to-list control on any item card.
-                                                    </p>
-                                                </div>
-                                            ) : (
-                                                <div className="listing-grid" aria-label={`${selectedList.name} items`}>
-                                                    {selectedList.items.map((item) => (
-                                                        <article className="listing-card" key={`${selectedList.id}-${item.id}`}>
-                                                            {item.imageUrl ? (
-                                                                <div className="listing-image-frame">
-                                                                    <img className="listing-image" src={item.imageUrl} alt={item.name} />
-                                                                </div>
-                                                            ) : (
-                                                                <div className="listing-image-placeholder">No image</div>
-                                                            )}
-
-                                                            <div className="listing-header">
-                                                                <h3 className="listing-title">{item.name}</h3>
-                                                                <p className="listing-price">${item.price.toFixed(2)}</p>
-                                                            </div>
-
-                                                            <p className="listing-description">{item.description}</p>
-
-                                                            <div className="listing-footer">
-                                                                <div className="listing-categories">
-                                                                    {item.categories.map((category) => (
-                                                                        <span className="listing-category-chip" key={`${item.id}-${category}`}>
-                                                                            {category}
-                                                                        </span>
-                                                                    ))}
-                                                                </div>
-                                                                <span className="listing-date">{formatDate(item.createdAt)}</span>
-                                                            </div>
-
-                                                            <div className="listing-actions">
-                                                                <button
-                                                                    className="button listing-action-button lists-danger-button"
-                                                                    type="button"
-                                                                    onClick={() => {
-                                                                        void handleRemoveItem(selectedList.id, item.id);
-                                                                    }}
-                                                                    disabled={pendingListRemoveId === item.id}
-                                                                >
-                                                                    {pendingListRemoveId === item.id ? 'Removing...' : 'Remove from List'}
-                                                                </button>
-                                                            </div>
-                                                        </article>
-                                                    ))}
-                                                </div>
-                                            )}
+                                                </article>
+                                            ))}
                                         </div>
-                                    </section>
+                                    )}
                                 </div>
                             ) : null}
                         </section>
@@ -794,14 +837,11 @@ export function ProfilePage() {
 
                     {activeSection === 'alerts' ? (
                         <section className="profile-section-stack" aria-label="Alerts section">
-                            <div className="profile-panel-topbar">
-                                <div>
+                            <div className="profile-panel-topbar profile-alerts-topbar">
+                                <div className="profile-alerts-topbar-copy">
                                     <h2 className="card-title">Alerts</h2>
-                                    <p className="card-subtitle">Stay ahead of new listings and changes to the items you care about.</p>
+                                    <p className="card-subtitle">Stay ahead of new listings and changes to the items you care about. We will email you when an item is posted that matches your alerts, or when an item you are watching is updated or sold.</p>
                                 </div>
-                                <button className="button button-accent" type="button" onClick={() => setIsAlertModalOpen(true)}>
-                                    Add Alert
-                                </button>
                             </div>
 
                             {alertsError ? <p className="status status-error">{alertsError}</p> : null}
@@ -811,6 +851,9 @@ export function ProfilePage() {
                             <section className="profile-alerts-panel" aria-label="Saved email alerts">
                                 <div className="profile-alerts-header">
                                     <h2 className="section-heading">Saved Alerts</h2>
+                                    <button className="button button-secondary" type="button" onClick={() => setIsAlertModalOpen(true)}>
+                                        + New Alert
+                                    </button>
                                 </div>
 
                                 {!loadingPreferences && !preferences.length ? (
@@ -826,41 +869,38 @@ export function ProfilePage() {
                                     <div className="profile-alerts-list">
                                         {preferences.map((preference) => (
                                             <article className="profile-alert-card" key={preference.id}>
-                                                <div className="profile-alert-card-header">
-                                                    <h3 className="profile-alert-card-title">Saved alert</h3>
-                                                    <button
-                                                        className="button profile-alert-delete-button"
-                                                        type="button"
-                                                        onClick={() => {
-                                                            void handleDeletePreference(preference.id);
-                                                        }}
-                                                        disabled={pendingAlertDeleteId === preference.id}
-                                                    >
-                                                        {pendingAlertDeleteId === preference.id ? 'Removing...' : 'Delete'}
-                                                    </button>
-                                                </div>
-
-                                                <div className="profile-alert-group">
-                                                    <span className="profile-alert-label">Keywords</span>
-                                                    <div className="listing-categories">
-                                                        {preference.keywords.length ? preference.keywords.map((keyword) => (
-                                                            <span className="listing-category-chip" key={`${preference.id}-${keyword}`}>
-                                                                {keyword}
-                                                            </span>
-                                                        )) : <span className="profile-alert-empty">None</span>}
+                                                <div className="profile-alert-card-body profile-alert-card-body-stacked">
+                                                    <div className="profile-alert-field">
+                                                        <span className="profile-alert-field-label">Keywords</span>
+                                                        <div className="listing-categories">
+                                                            {preference.keywords.length ? preference.keywords.map((keyword) => (
+                                                                <span className="listing-category-chip" key={`${preference.id}-kw-${keyword}`}>
+                                                                    {keyword}
+                                                                </span>
+                                                            )) : <span className="profile-alert-empty">Any keyword</span>}
+                                                        </div>
+                                                    </div>
+                                                    <div className="profile-alert-field">
+                                                        <span className="profile-alert-field-label">Categories</span>
+                                                        <div className="listing-categories">
+                                                            {preference.categories.length ? preference.categories.map((category) => (
+                                                                <span className="listing-category-chip" key={`${preference.id}-cat-${category}`}>
+                                                                    {category}
+                                                                </span>
+                                                            )) : <span className="profile-alert-empty">Any category</span>}
+                                                        </div>
                                                     </div>
                                                 </div>
-
-                                                <div className="profile-alert-group">
-                                                    <span className="profile-alert-label">Categories</span>
-                                                    <div className="listing-categories">
-                                                        {preference.categories.length ? preference.categories.map((category) => (
-                                                            <span className="listing-category-chip" key={`${preference.id}-${category}`}>
-                                                                {category}
-                                                            </span>
-                                                        )) : <span className="profile-alert-empty">None</span>}
-                                                    </div>
-                                                </div>
+                                                <button
+                                                    className="button profile-alert-delete-button"
+                                                    type="button"
+                                                    onClick={() => {
+                                                        void handleDeletePreference(preference.id);
+                                                    }}
+                                                    disabled={pendingAlertDeleteId === preference.id}
+                                                >
+                                                    {pendingAlertDeleteId === preference.id ? 'Removing...' : 'Delete'}
+                                                </button>
                                             </article>
                                         ))}
                                     </div>
@@ -882,12 +922,21 @@ export function ProfilePage() {
                                 ) : (
                                     <div className="profile-alerts-list">
                                         {watchedListings.map((listing) => (
-                                            <article className="profile-alert-card" key={listing.id}>
+                                            <article className="profile-alert-card profile-watch-card" key={listing.id}>
                                                 <div className="profile-alert-card-header">
-                                                    <div>
-                                                        <h3 className="profile-alert-card-title">{listing.name}</h3>
-                                                        <p className="profile-watch-price">${listing.price.toFixed(2)}</p>
-                                                    </div>
+                                                    <Link className="profile-watch-link" to={`/listings/${listing.id}`}>
+                                                        <div className="profile-watch-main">
+                                                            {listing.imageUrl ? (
+                                                                <img className="profile-watch-thumb" src={listing.imageUrl} alt={listing.name} />
+                                                            ) : (
+                                                                <div className="profile-watch-thumb-placeholder" aria-hidden="true">No image</div>
+                                                            )}
+                                                            <div className="profile-watch-copy">
+                                                                <h3 className="profile-alert-card-title">{listing.name}</h3>
+                                                                <p className="profile-watch-price">${listing.price.toFixed(2)}</p>
+                                                            </div>
+                                                        </div>
+                                                    </Link>
                                                     <div className="profile-watch-actions">
                                                         <button
                                                             className="button profile-alert-delete-button"
@@ -903,13 +952,6 @@ export function ProfilePage() {
                                                 </div>
 
                                                 <p className="lists-list-card-body">{listing.description}</p>
-                                                <div className="listing-categories">
-                                                    {listing.categories.map((category) => (
-                                                        <span className="listing-category-chip" key={`${listing.id}-${category}`}>
-                                                            {category}
-                                                        </span>
-                                                    ))}
-                                                </div>
                                             </article>
                                         ))}
                                     </div>
@@ -928,9 +970,6 @@ export function ProfilePage() {
                                 <h2 className="card-title">Create Alert</h2>
                                 <p className="card-subtitle">Choose keywords or categories and UVA Thrift will email you when a match is posted.</p>
                             </div>
-                            <button className="button button-secondary" type="button" onClick={closeAlertModal} disabled={alertSubmitting}>
-                                Close
-                            </button>
                         </div>
 
                         <form className="form-grid" onSubmit={handleCreateAlert}>
@@ -984,9 +1023,6 @@ export function ProfilePage() {
                                 <h2 className="card-title">Edit Profile</h2>
                                 <p className="card-subtitle">Update the details you want to share once a conversation starts.</p>
                             </div>
-                            <button className="button button-secondary" type="button" onClick={closeProfileModal} disabled={profileSubmitting}>
-                                Close
-                            </button>
                         </div>
 
                         <form className="form-grid" onSubmit={handleSaveProfile}>
@@ -1030,7 +1066,7 @@ export function ProfilePage() {
                                         disabled={profileSubmitting}
                                     />
                                 </div>
-                            </label>
+                            </label>Use the New List button above to create one, then save items from the marketplace into it.
 
                             <div className="profile-modal-actions">
                                 <button className="button button-secondary" type="button" onClick={closeProfileModal} disabled={profileSubmitting}>
@@ -1053,9 +1089,6 @@ export function ProfilePage() {
                                 <h2 className="card-title">{editingListId ? 'Edit List' : 'Create a List'}</h2>
                                 <p className="card-subtitle">Name the list clearly so you can recognize it when saving items from the marketplace.</p>
                             </div>
-                            <button className="button button-secondary" type="button" onClick={closeListModal} disabled={listSubmitting}>
-                                Close
-                            </button>
                         </div>
 
                         <form className="form-grid" onSubmit={handleSubmitList}>

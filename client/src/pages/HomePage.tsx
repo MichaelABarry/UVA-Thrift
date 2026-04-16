@@ -6,8 +6,6 @@ import { addItemToList, getLists as getUserLists } from '../services/listService
 import type { ItemList } from '../types/list';
 import type { Listing } from '../types/listing';
 
-const DESCRIPTION_PREVIEW_LENGTH = 120;
-
 type SortOption = 'price-asc' | 'price-desc' | 'date-asc' | 'date-desc';
 
 function formatDate(iso: string): string {
@@ -235,10 +233,9 @@ export function HomePage() {
                 {/* Empty state */}
                 {!loadingListings && !error && !hasListings ? (
                     <div className="empty-state">
-                        <div className="empty-state-icon">📦</div>
                         <h2 className="empty-state-title">No listings yet</h2>
                         <p className="empty-state-body">
-                            Be the first — click <strong>+ Add Item</strong> in the navigation to create a listing.
+                            Be the first — click <strong>+ New Item</strong> to create a listing.
                         </p>
                     </div>
                 ) : null}
@@ -363,11 +360,6 @@ export function HomePage() {
                             ) : null}
 
                             {sortedFilteredListings.map((listing) => {
-                                const descriptionPreview =
-                                    listing.description.length > DESCRIPTION_PREVIEW_LENGTH
-                                        ? `${listing.description.slice(0, DESCRIPTION_PREVIEW_LENGTH).trimEnd()}...`
-                                        : listing.description;
-
                                 return (
                                     <article
                                         className="listing-card listing-card-clickable"
@@ -411,7 +403,6 @@ export function HomePage() {
                                             <h2 className="listing-title">{listing.name}</h2>
                                             <p className="listing-price">${listing.price.toFixed(2)}</p>
                                         </div>
-                                        <p className="listing-description">{descriptionPreview}</p>
                                         <div className="listing-footer">
                                             <div className="listing-categories">
                                                 {listing.categories.map((category) => (
