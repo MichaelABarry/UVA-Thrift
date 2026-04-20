@@ -10,6 +10,7 @@ const LINKS: NavLink[] = [
     { to: '/home', label: 'Home' },
     { to: '/messages', label: 'Messages' },
     { to: '/profile', label: 'Profile' },
+	{ to: '/hoos-reuse', label: 'HoosReUse' },
     { to: '/listings/new', label: '+ New Item', className: 'nav-btn-add' }
 ];
 
@@ -30,7 +31,7 @@ export function TopNav() {
                             <Link
                                 key={link.to}
                                 to={link.to}
-                                className={`nav-link ${extra} ${isActive && !extra ? 'nav-link-active' : ''}`}
+                                className={`nav-link ${extra} ${isActive && !extra ? 'nav-link-active' : ''} ${isActive && extra ? 'nav-link-active' : ''}`}
                             >
                                 {link.label}
                             </Link>

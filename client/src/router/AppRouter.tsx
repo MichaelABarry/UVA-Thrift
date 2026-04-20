@@ -3,6 +3,7 @@ import { ProtectedLayout } from '../components/ProtectedLayout';
 import { AuthPage } from '../pages/AuthPage';
 import { CreateListingPage } from '../pages/CreateListingPage';
 import { HomePage } from '../pages/HomePage';
+import { HoosReusePage } from '../pages/HoosReusePage';
 import { ListingDetailsPage } from '../pages/ListingDetailsPage';
 import { ConversationPage } from '../pages/ConversationPage';
 import { MessagesPage } from '../pages/MessagesPage';
@@ -20,6 +21,7 @@ export function AppRouter() {
             <Route path="/reset-password" element={<ResetPasswordPage />} />
             <Route element={<ProtectedLayout />}>
                 <Route path="/home" element={<HomePage />} />
+				<Route path="/hoos-reuse" element={<HoosReusePage />} />
                 <Route path="/lists" element={<Navigate to="/profile?section=lists" replace />} />
                 <Route path="/listings/:listingId" element={<ListingDetailsPage />} />
                 <Route path="/my-items" element={<Navigate to="/profile?section=items" replace />} />
