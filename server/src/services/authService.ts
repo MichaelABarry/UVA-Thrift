@@ -169,7 +169,7 @@ export async function verifyEmailToken(rawToken: string) {
             }
         }
 
-        // If there is no matching token, or if the token has already been used or expired before verification completed, throw an error.
+        // If there is no matching token, or if the token has already been used or expired before verification completed, throw an error indicating that the token is invalid or expired.
         throw new HttpError('Verification token is invalid or expired.', 400);
     }
 

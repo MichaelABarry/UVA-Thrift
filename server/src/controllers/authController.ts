@@ -37,7 +37,7 @@ function clearSessionCookie(res: Response) {
 // Endpoint handler for user registration
 export async function register(req: Request, res: Response) {
     const user = await registerUser(req.body);
-    res.status(201).json({ user, message: 'Registration successful. Check your email for a verification link.' });
+    res.status(201).json({ user, message: 'Registration successful. Check your email for a verification link. Please allow for at least 30 seconds to receive the email.' });
 }
 
 // Endpoint handler for user login. If the user's email is not verified, a new verification email will be sent and no session will be created.
@@ -48,7 +48,7 @@ export async function login(req: Request, res: Response) {
     if (result.requiresVerification) {
         return res.status(403).json({
         requiresVerification: true,
-        message: 'Your email is not verified. A new verification link has been sent.'
+        message: 'Your email is not verified. A new verification link has been sent. Please allow for at least 30 seconds to receive the email. '
         });
     }
 

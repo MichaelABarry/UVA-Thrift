@@ -119,6 +119,7 @@ describe('server listingService', () => {
             name: 'Desk Lamp',
             description: 'Dorm ready lamp',
             price: 19.99,
+            condition: 'good',
             categories: ['Electronics', 'electronics', 'Other']
         }, file);
 
@@ -128,6 +129,7 @@ describe('server listingService', () => {
             name: 'Desk Lamp',
             description: 'Dorm ready lamp',
             priceCents: 1999,
+            condition: 'good',
             categories: ['electronics', 'other'],
             imageKey: 'listings/lamp.png',
             imageUrl: 'https://bucket.s3.amazonaws.com/listings/lamp.png'
@@ -138,6 +140,7 @@ describe('server listingService', () => {
             name: 'Desk Lamp',
             description: 'Dorm ready lamp',
             price: 19.99,
+            condition: 'good',
             categories: ['electronics', 'other'],
             imageUrl: 'https://bucket.s3.amazonaws.com/listings/lamp.png',
             createdAt: '2026-03-15T12:00:00.000Z'
@@ -148,6 +151,7 @@ describe('server listingService', () => {
             name: 'Desk Lamp',
             description: 'Dorm ready lamp',
             price: 19.99,
+            condition: 'good',
             categories: ['electronics', 'other'],
             imageUrl: 'https://bucket.s3.amazonaws.com/listings/lamp.png',
             createdAt: '2026-03-15T12:00:00.000Z'
@@ -169,6 +173,7 @@ describe('server listingService', () => {
                 name: 'Desk Lamp',
                 description: 'Dorm ready lamp',
                 price: 18.99,
+                condition: 'good',
                 categories: ['electronics'],
                 imageUrl: null,
                 createdAt: '2026-03-15T12:00:00.000Z'
@@ -179,6 +184,7 @@ describe('server listingService', () => {
                 name: 'Desk Lamp',
                 description: 'Dorm ready lamp',
                 price: 25,
+                condition: 'good',
                 categories: ['furniture'],
                 imageUrl: null,
                 createdAt: '2026-03-15T12:00:00.000Z'
@@ -251,6 +257,7 @@ describe('server listingService', () => {
                 name: 'Updated Lamp',
                 description: 'Better bulb included',
                 price: 24,
+                condition: 'good',
                 categories: ['Electronics', 'Other', 'electronics']
             }, file)
         ).resolves.toEqual({
@@ -259,6 +266,7 @@ describe('server listingService', () => {
             name: 'Updated Lamp',
             description: 'Better bulb included',
             price: 24,
+            condition: 'good',
             categories: ['electronics', 'other'],
             imageUrl: 'https://bucket.s3.amazonaws.com/listings/new.png',
             createdAt: '2026-03-15T12:00:00.000Z'
@@ -270,6 +278,7 @@ describe('server listingService', () => {
             name: 'Updated Lamp',
             description: 'Better bulb included',
             priceCents: 2400,
+            condition: 'good',
             categories: ['electronics', 'other'],
             imageKey: 'listings/new.png',
             imageUrl: 'https://bucket.s3.amazonaws.com/listings/new.png'
@@ -280,6 +289,7 @@ describe('server listingService', () => {
             name: 'Updated Lamp',
             description: 'Better bulb included',
             price: 24,
+            condition: 'good',
             categories: ['electronics', 'other'],
             imageUrl: 'https://bucket.s3.amazonaws.com/listings/new.png',
             createdAt: '2026-03-15T12:00:00.000Z'
@@ -291,6 +301,7 @@ describe('server listingService', () => {
                 name: 'Updated Lamp',
                 description: 'Better bulb included',
                 price: 24,
+                condition: 'good',
                 categories: ['electronics']
             })
         ).rejects.toMatchObject({
@@ -313,6 +324,7 @@ describe('server listingService', () => {
             name: 'Desk Lamp',
             description: 'Dorm ready lamp',
             price: 18.99,
+            condition: 'good',
             categories: ['electronics'],
             imageUrl: 'https://bucket.s3.amazonaws.com/listings/lamp.png',
             createdAt: '2026-03-15T12:00:00.000Z'

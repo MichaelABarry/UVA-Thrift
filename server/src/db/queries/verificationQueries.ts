@@ -31,7 +31,7 @@ export async function getValidVerificationToken(tokenHash: string) {
     return result.rows[0] ?? null;
 }
 
-// Retrieves a verification token by its hash regardless of whether it has been used.
+// Retrieves a verification token by its hash regardless of whether it has been used or expired.
 export async function getVerificationTokenByHash(tokenHash: string) {
     const result = await pool.query<VerificationTokenRecord>(
         `SELECT * FROM email_verification_tokens
