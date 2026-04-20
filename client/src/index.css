@@ -2918,3 +2918,55 @@ textarea.cl-input {
   padding: 1rem 1.25rem;
   color: var(--text-secondary);
 }
+/* ── Meetup bubble header row (label + copy button side by side) ── */
+.conv-bubble-meetup-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding: 0.6rem 0.85rem 0.3rem;
+}
+
+.conv-bubble-meetup-header .conv-bubble-meetup-label {
+  padding: 0;
+  margin: 0;
+}
+
+/* Small inline copy button inside the bubble */
+.conv-bubble-meetup-copy-btn {
+  flex-shrink: 0;
+  background: rgba(255, 255, 255, 0.15);
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  border-radius: 6px;
+  color: rgba(255, 255, 255, 0.85);
+  font-size: 0.72rem;
+  font-weight: 600;
+  padding: 0.25rem 0.55rem;
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
+  white-space: nowrap;
+}
+
+.conv-bubble-meetup-copy-btn:hover {
+  background: rgba(255, 255, 255, 0.25);
+  color: #fff;
+}
+
+/* Style for non-own (gray) bubble */
+.conv-bubble-meetup:not(.conv-bubble-meetup-own) .conv-bubble-meetup-copy-btn {
+  background: rgba(35, 45, 75, 0.08);
+  border-color: rgba(35, 45, 75, 0.2);
+  color: var(--text-secondary);
+}
+
+.conv-bubble-meetup:not(.conv-bubble-meetup-own) .conv-bubble-meetup-copy-btn:hover {
+  background: rgba(35, 45, 75, 0.15);
+  color: var(--text);
+}
+
+/* Modal actions row (Copy Address + Close buttons side by side) */
+.conv-meetup-modal-actions {
+  display: flex;
+  gap: 0.6rem;
+  flex-shrink: 0;
+}

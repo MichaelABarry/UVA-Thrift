@@ -29,7 +29,7 @@ function formatTime(iso: string): string {
 }
 
 // Parse a MEETUP: encoded message into its data, or return null for normal messages.
-type MeetupData = { lat: number; lng: number; label: string };
+type MeetupData = { lat: number; lng: number; label: string; address?: string };
 
 function parseMeetupMessage(content: string): MeetupData | null {
     if (!content.startsWith('MEETUP:')) return null;
@@ -43,7 +43,16 @@ function parseMeetupMessage(content: string): MeetupData | null {
 // Renders a chat bubble — either a regular text bubble or an embedded map bubble.
 function MessageBubble({ msg, isOwn }: { msg: Message; isOwn: boolean }) {
     const [isMapOpen, setIsMapOpen] = useState(false);
+	const [copied, setCopied] = useState(false);
     const meetup = parseMeetupMessage(msg.content);
+
+	function handleCopyAddress() {
+        const address = meetup?.address ?? meetup?.label ?? '';
+        void navigator.clipboard.writeText(address).then(() => {
+            setCopied(true);
+            setTimeout(() => setCopied(false), 2000);
+        });
+    }
 
     if (meetup) {
         const delta = 0.004;
@@ -53,11 +62,19 @@ function MessageBubble({ msg, isOwn }: { msg: Message; isOwn: boolean }) {
         return (
             <>
                 <div className={`conv-bubble conv-bubble-meetup ${isOwn ? 'conv-bubble-meetup-own' : ''}`}>
+					<div className="conv-bubble-meetup-header">
                     <p className="conv-bubble-meetup-label">
                         📍 <strong>Meet-up area suggested</strong>
                     </p>
-
-                    <p className="conv-bubble-meetup-street">{meetup.label}</p>
+					<button
+                            type="button"
+                            className="conv-bubble-meetup-copy-btn"
+                            onClick={handleCopyAddress}
+                            title="Copy address"
+                        >
+                            {copied ? '✓ Copied' : 'Copy Address'}
+                        </button>
+					</div>
 
                     <button
                         type="button"
@@ -78,9 +95,6 @@ function MessageBubble({ msg, isOwn }: { msg: Message; isOwn: boolean }) {
                         </div>
                     </button>
 
-                    <p className="conv-bubble-meetup-note">
-                        Orange circle = approximate area. Confirm exact spot in chat.
-                    </p>
                 </div>
 
                 {isMapOpen ? (
@@ -94,9 +108,18 @@ function MessageBubble({ msg, isOwn }: { msg: Message; isOwn: boolean }) {
                             <div className="conv-meetup-modal-header">
                                 <div>
                                     <h3 className="conv-meetup-modal-title">Meet-up Area</h3>
-                                    <p className="conv-meetup-modal-subtitle">{meetup.label}</p>
+                                    <p className="conv-meetup-modal-subtitle">
+										{meetup.address ?? meetup.label}
+									</p>
                                 </div>
-
+								<div className="conv-meetup-modal-actions">
+                                    <button
+                                        type="button"
+                                        className="button button-secondary"
+                                        onClick={handleCopyAddress}
+                                    >
+                                        {copied ? '✓ Copied!' : '📋 Copy Address'}
+                                    </button>
                                 <button
                                     type="button"
                                     className="button button-secondary"
@@ -104,6 +127,7 @@ function MessageBubble({ msg, isOwn }: { msg: Message; isOwn: boolean }) {
                                 >
                                     Close
                                 </button>
+								</div>
                             </div>
 
                             <div className="conv-meetup-modal-leaflet-wrap">
@@ -240,14 +264,31 @@ export function ConversationPage() {
     }
 
     // When MeetupAreaPicker confirms a location, send it as a message immediately
-    // (the MEETUP: encoded string goes straight to the DB and renders as a map for both users).
+    // 1. The MEETUP:encoded map bubble so both users can see the pin visually
+    // 2. A plain text message with the full address so it can be copied into Maps/GPS
+
     async function handleLocationConfirmed(encodedMessage: string) {
         if (!conversationId) return;
         setSending(true);
         setSendError(null);
         try {
-            const response = await sendMessage(conversationId, encodedMessage);
-            setMessages((prev) => [...prev, response.message]);
+
+			// Send the map bubble first
+            const mapResponse = await sendMessage(conversationId, encodedMessage);
+            setMessages((prev) => [...prev, mapResponse.message]);
+
+            // Parse the address out of the encoded payload and send it as plain text
+            const payload = encodedMessage.startsWith('MEETUP:')
+                ? (JSON.parse(encodedMessage.slice('MEETUP:'.length)) as { address?: string; label?: string })
+                : null;
+            const address = payload?.address ?? payload?.label;
+            if (address) {
+                const addrResponse = await sendMessage(
+                    conversationId,
+                    `📍 Address: ${address}`
+                );
+                setMessages((prev) => [...prev, addrResponse.message]);
+            }
         } catch (err) {
             setSendError(err instanceof Error ? err.message : 'Unable to send location.');
         } finally {
