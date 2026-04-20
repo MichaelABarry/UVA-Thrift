@@ -14,6 +14,7 @@ type SelectedLocation = {
     lat: number;
     lng: number;
     label: string;
+	address: string;
 };
 
 export function MeetupAreaPicker({ onLocationConfirmed }: Props) {
@@ -99,14 +100,20 @@ export function MeetupAreaPicker({ onLocationConfirmed }: Props) {
                         `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json`
                     );
                     const data = (await res.json()) as {
-                        address?: { road?: string; neighbourhood?: string; suburb?: string };
+						display_name?: string;
+                        address?: { road?: string; neighbourhood?: string; suburb?: string; };
                     };
                     const addr = data.address;
-                    const label =
+                    const shortlabel =
                         addr?.road ?? addr?.neighbourhood ?? addr?.suburb ?? `${lat.toFixed(4)}, ${lng.toFixed(4)}`;
-                    setSelectedLocation({ lat, lng, label });
+
+
+                    const fullAddress = data.display_name ?? shortlabel;
+					
+					setSelectedLocation({ lat, lng, label: shortlabel, address: fullAddress });
+
                 } catch {
-                    setSelectedLocation({ lat, lng, label: `${lat.toFixed(4)}, ${lng.toFixed(4)}` });
+                    setSelectedLocation({ lat, lng, label: `${lat.toFixed(4)}, ${lng.toFixed(4)}`, address: '' });
                 }
             });
 
@@ -132,7 +139,8 @@ export function MeetupAreaPicker({ onLocationConfirmed }: Props) {
         const payload = JSON.stringify({
             lat: selectedLocation.lat,
             lng: selectedLocation.lng,
-            label: selectedLocation.label
+            label: selectedLocation.label,
+			address: selectedLocation.address
         });
         onLocationConfirmed(`MEETUP:${payload}`);
         setIsOpen(false);
@@ -198,7 +206,7 @@ export function MeetupAreaPicker({ onLocationConfirmed }: Props) {
                         </div>
                         <button
                             type="button"
-                            className="button button-secondary meetup-map-close"
+                            className="button button-accent meetup-map-close"
                             onClick={handleClose}
                         >
                             ✕ Close
