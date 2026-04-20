@@ -4,12 +4,11 @@ import { AuthPage } from '../pages/AuthPage';
 import { CreateListingPage } from '../pages/CreateListingPage';
 import { HomePage } from '../pages/HomePage';
 import { ListingDetailsPage } from '../pages/ListingDetailsPage';
-import { ListsPage } from '../pages/ListsPage';
-import { MyItemsPage } from '../pages/MyItemsPage';
 import { ConversationPage } from '../pages/ConversationPage';
 import { MessagesPage } from '../pages/MessagesPage';
 import { SetupProfilePage } from '../pages/SetupProfilePage';
 import { ProfilePage } from '../pages/ProfilePage';
+import { ResetPasswordPage } from '../pages/ResetPasswordPage';
 import { VerifyEmailPage } from '../pages/VerifyEmailPage';
 
 // Sets up the main application routing.
@@ -18,11 +17,12 @@ export function AppRouter() {
         <Routes>
             <Route path="/" element={<AuthPage />} />
             <Route path="/verify-email" element={<VerifyEmailPage />} />
+            <Route path="/reset-password" element={<ResetPasswordPage />} />
             <Route element={<ProtectedLayout />}>
                 <Route path="/home" element={<HomePage />} />
-                <Route path="/lists" element={<ListsPage />} />
+                <Route path="/lists" element={<Navigate to="/profile?section=lists" replace />} />
                 <Route path="/listings/:listingId" element={<ListingDetailsPage />} />
-                <Route path="/my-items" element={<MyItemsPage />} />
+                <Route path="/my-items" element={<Navigate to="/profile?section=items" replace />} />
                 <Route path="/setup-profile" element={<SetupProfilePage />} />
                 <Route path="/messages" element={<MessagesPage />} />
                 <Route path="/messages/:conversationId" element={<ConversationPage />} />

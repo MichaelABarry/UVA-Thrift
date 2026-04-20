@@ -389,7 +389,7 @@ export function ConversationPage() {
                                         ) : null}
                                     </label>
                                     <button
-                                        className="button button-secondary"
+                                        className="button button-accent"
                                         type="button"
                                         disabled={(!sharePhone && !shareVenmo) || sending}
                                         onClick={() => { void handleShareContact(); }}
@@ -398,7 +398,7 @@ export function ConversationPage() {
                                     </button>
                                 </div>
 
-                                <div className="conv-meetup-panel">
+                                 <div className="conv-meetup-panel">
                                     <MeetupAreaPicker onLocationConfirmed={handleLocationConfirmed} />
                                 </div>
                             </div>

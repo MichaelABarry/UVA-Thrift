@@ -23,6 +23,17 @@ export async function findUserById(id: string) {
     return result.rows[0] ?? null;
 }
 
+// Deletes a user by ID. Returns the deleted user record if found, otherwise null.
+export async function deleteUserById(userId: string) {
+    const result = await pool.query<UserRecord>(
+        `DELETE FROM users
+        WHERE id = $1
+        RETURNING *`,
+        [userId]
+    );
+    return result.rows[0] ?? null;
+}
+
 // Creates a new user with the given email and password hash. Returns the created user record.
 export async function createUser(email: string, passwordHash: string) {
     const result = await pool.query<UserRecord>(
@@ -48,6 +59,19 @@ export async function updateUserProfile(
         WHERE id = $1
         RETURNING *`,
         [userId, fields.displayName, fields.phoneNumber, fields.venmoUsername]
+    );
+    return result.rows[0] ?? null;
+}
+
+// Updates a user's password hash. Returns the updated user record.
+export async function updateUserPasswordHash(userId: string, passwordHash: string) {
+    const result = await pool.query<UserRecord>(
+        `UPDATE users
+        SET password_hash = $2,
+            updated_at = NOW()
+        WHERE id = $1
+        RETURNING *`,
+        [userId, passwordHash]
     );
     return result.rows[0] ?? null;
 }

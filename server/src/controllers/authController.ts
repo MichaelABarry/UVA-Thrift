@@ -1,8 +1,11 @@
 import type { Request, Response } from 'express';
 import {
+    deleteUserAccount,
   getCurrentUserFromSession,
   loginUser,
   logoutUser,
+    requestPasswordReset,
+    resetPassword,
   registerUser,
   resendVerificationEmail,
   updateUserProfileForUser,
@@ -64,6 +67,13 @@ export async function logout(req: Request, res: Response) {
     return res.status(200).json({ message: 'Logged out.' });
 }
 
+// Endpoint handler for deleting the current user's account.
+export async function deleteAccount(req: Request, res: Response) {
+    await deleteUserAccount(req.user!.id);
+    clearSessionCookie(res);
+    return res.status(200).json({ message: 'Account deleted.' });
+}
+
 // Endpoint handler for verifying an email. Also creates a session so the client can proceed to profile setup without logging in again.
 export async function verifyEmail(req: Request, res: Response) {
     const token = String(req.body?.token || '').trim();
@@ -74,6 +84,17 @@ export async function verifyEmail(req: Request, res: Response) {
     const result = await verifyEmailToken(token);
     setSessionCookie(res, result.sessionId);
     return res.status(200).json({ user: result.user, message: 'Email verified successfully.' });
+}
+
+export async function forgotPassword(req: Request, res: Response) {
+    await requestPasswordReset(req.body);
+    return res.status(200).json({ message: 'If an account exists for that email, a password reset link was sent.' });
+}
+
+export async function confirmPasswordReset(req: Request, res: Response) {
+    await resetPassword(req.body);
+    clearSessionCookie(res);
+    return res.status(200).json({ message: 'Password reset successfully.' });
 }
 
 // Endpoint handler for updating the current user's optional profile fields (name, phone, venmo).
