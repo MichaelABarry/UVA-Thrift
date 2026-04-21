@@ -7,7 +7,7 @@ import {
     deleteListingWatch,
     getListingWatchStatus
 } from '../services/listingWatchService';
-import { createOrGetConversation } from '../services/conversationService';
+import { createOrGetConversation, sendMessage } from '../services/conversationService';
 import type { Listing } from '../types/listing';
 
 function formatDate(iso: string): string {
@@ -24,6 +24,8 @@ export function ListingDetailsPage() {
     const [watching, setWatching] = useState(false);
     const [watchSubmitting, setWatchSubmitting] = useState(false);
     const [messagingSubmitting, setMessagingSubmitting] = useState(false);
+    const [showMessageCompose, setShowMessageCompose] = useState(false);
+    const [messageText, setMessageText] = useState('');
     const [error, setError] = useState<string | null>(null);
     const [statusMessage, setStatusMessage] = useState<string | null>(null);
 
@@ -103,15 +105,21 @@ export function ListingDetailsPage() {
         }
     }
 
-    async function handleMessageSeller() {
-        if (!listing) return;
+    function handleMessageSeller() {
+        setShowMessageCompose(true);
+        setError(null);
+    }
+
+    async function handleSendMessage() {
+        if (!listing || !messageText.trim()) return;
         setMessagingSubmitting(true);
         setError(null);
         try {
-            const response = await createOrGetConversation(listing.id);
-            void navigate(`/messages/${response.conversation.id}`);
+            const { conversation } = await createOrGetConversation(listing.id);
+            await sendMessage(conversation.id, messageText.trim());
+            void navigate(`/messages/${conversation.id}`);
         } catch (msgError) {
-            setError(msgError instanceof Error ? msgError.message : 'Unable to start conversation.');
+            setError(msgError instanceof Error ? msgError.message : 'Unable to send message.');
         } finally {
             setMessagingSubmitting(false);
         }
@@ -174,14 +182,44 @@ export function ListingDetailsPage() {
                                                     ? 'Stop Watching Item'
                                                     : 'Email Me About Changes'}
                                     </button>
-                                    <button
-                                        className="button button-secondary"
-                                        type="button"
-                                        onClick={handleMessageSeller}
-                                        disabled={messagingSubmitting}
-                                    >
-                                        {messagingSubmitting ? 'Opening chat...' : 'Message Seller'}
-                                    </button>
+                                    {!showMessageCompose ? (
+                                        <button
+                                            className="button button-secondary"
+                                            type="button"
+                                            onClick={handleMessageSeller}
+                                        >
+                                            Message Seller
+                                        </button>
+                                    ) : (
+                                        <div className="message-compose">
+                                            <textarea
+                                                className="input"
+                                                rows={3}
+                                                placeholder="Type a message to the seller…"
+                                                value={messageText}
+                                                onChange={(e) => setMessageText(e.target.value)}
+                                                disabled={messagingSubmitting}
+                                            />
+                                            <div className="message-compose-actions">
+                                                <button
+                                                    className="button button-accent"
+                                                    type="button"
+                                                    onClick={handleSendMessage}
+                                                    disabled={messagingSubmitting || !messageText.trim()}
+                                                >
+                                                    {messagingSubmitting ? 'Sending…' : 'Send Message'}
+                                                </button>
+                                                <button
+                                                    className="button button-secondary"
+                                                    type="button"
+                                                    onClick={() => { setShowMessageCompose(false); setMessageText(''); }}
+                                                    disabled={messagingSubmitting}
+                                                >
+                                                    Cancel
+                                                </button>
+                                            </div>
+                                        </div>
+                                    )}
                                 </div>
                             ) : null}
                         </div>

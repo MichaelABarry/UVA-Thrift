@@ -1022,6 +1022,19 @@ a.button:hover {
   gap: 0.5rem;
 }
 
+.message-compose {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  width: 100%;
+  margin-top: 0.25rem;
+}
+
+.message-compose-actions {
+  display: flex;
+  gap: 0.5rem;
+}
+
 /* ─── Messages Page ─── */
 
 .messages-list {
