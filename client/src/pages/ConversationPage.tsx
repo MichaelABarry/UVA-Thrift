@@ -335,12 +335,16 @@ export function ConversationPage() {
                                             ${conversation.listingPrice.toFixed(2)}
                                         </span>
                                     </div>
-                                    <Link
-                                        className="button button-secondary"
-                                        to={`/listings/${conversation.listingId}`}
-                                    >
-                                        View Listing
-                                    </Link>
+                                    {conversation.listingId ? (
+                                        <Link
+                                            className="button button-secondary"
+                                            to={`/listings/${conversation.listingId}`}
+                                        >
+                                            View Listing
+                                        </Link>
+                                    ) : (
+                                        <span className="conv-listing-deleted">Listing deleted</span>
+                                    )}
                                 </div>
 
                                 <div

@@ -1218,6 +1218,12 @@ a.button:hover {
   color: var(--text-secondary);
 }
 
+.conv-listing-deleted {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  font-style: italic;
+}
+
 .conv-messages {
   flex: 1;
   overflow-y: auto;

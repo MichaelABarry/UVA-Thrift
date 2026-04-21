@@ -24,7 +24,7 @@ type MessageResponse = {
 
 type ConversationResponse = {
     id: string;
-    listingId: string;
+    listingId: string | null;
     listingName: string;
     listingImageUrl: string | null;
     listingPrice: number;
@@ -37,7 +37,7 @@ type ConversationResponse = {
 
 type ConversationSummaryResponse = {
     id: string;
-    listingId: string;
+    listingId: string | null;
     listingName: string;
     listingImageUrl: string | null;
     listingPrice: number;
@@ -92,9 +92,9 @@ function toConversationSummaryResponse(record: ConversationSummaryRecord): Conve
     return {
         id: record.id,
         listingId: record.listing_id,
-        listingName: record.listing_name,
+        listingName: record.listing_name ?? 'Deleted listing',
         listingImageUrl: record.listing_image_url,
-        listingPrice: record.listing_price_cents / 100,
+        listingPrice: (record.listing_price_cents ?? 0) / 100,
         otherPartyEmail: record.other_party_email,
         lastMessagePreview: record.last_message_content
             ? record.last_message_content.slice(0, 80)
@@ -145,7 +145,9 @@ export async function getConversationForUser(
         throw new HttpError('Forbidden.', 403);
     }
 
-    const listing = await findListingById(conversation.listing_id);
+    const listing = conversation.listing_id
+        ? await findListingById(conversation.listing_id)
+        : null;
     const messages = await findMessagesByConversationId(conversationId);
 
     return toConversationResponse(
