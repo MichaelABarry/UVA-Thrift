@@ -8,6 +8,7 @@ function buildListingFormData(payload: CreateListingPayload | UpdateListingPaylo
     formData.append('price', String(payload.price));
     formData.append('categories', JSON.stringify(payload.categories));
     formData.append('condition', payload.condition);
+	 formData.append('expirationDays', String(payload.expirationDays));
 
     if (payload.image) {
         formData.append('image', payload.image);

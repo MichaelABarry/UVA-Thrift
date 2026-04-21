@@ -12,6 +12,7 @@ export type ListingRecord = {
     image_key: string | null;
     created_at: string;
     updated_at: string;
+	expires_at: string;
 };
 
 export async function createListing(input: {
@@ -23,12 +24,13 @@ export async function createListing(input: {
     condition: string;
     imageUrl: string | null;
     imageKey: string | null;
+	expiresAt: Date;
 }) {
     const result = await pool.query<ListingRecord>(
-        `INSERT INTO listings (user_id, name, description, price_cents, categories, condition, image_url, image_key)
-        VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+        `INSERT INTO listings (user_id, name, description, price_cents, categories, condition, image_url, image_key, expires_at)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
         RETURNING *`,
-        [input.userId, input.name, input.description, input.priceCents, input.categories, input.condition, input.imageUrl, input.imageKey]
+        [input.userId, input.name, input.description, input.priceCents, input.categories, input.condition, input.imageUrl, input.imageKey, input.expiresAt]
     );
 
     return result.rows[0];

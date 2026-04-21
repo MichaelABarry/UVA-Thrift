@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Navigate, useNavigate, useParams } from 'react-router-dom';
+import { Link, Navigate, useNavigate, useParams } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { getListingDetails } from '../services/listingService';
 import {
@@ -12,6 +12,12 @@ import type { Listing } from '../types/listing';
 
 function formatDate(iso: string): string {
     return new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+}
+
+function getDaysUntilExpiry(expiresAt: string): number {
+    const now = new Date();
+    const expiry = new Date(expiresAt);
+    return Math.ceil((expiry.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
 }
 
 export function ListingDetailsPage() {
@@ -69,7 +75,7 @@ export function ListingDetailsPage() {
             }
         }
 
-        void loadWatchState();
+        void loadWatchState();;
     }, [listingId, user?.isEmailVerified]);
 
     if (!loading && !user?.isEmailVerified) {
@@ -77,9 +83,7 @@ export function ListingDetailsPage() {
     }
 
     async function handleWatchToggle() {
-        if (!listing) {
-            return;
-        }
+        if (!listing) return;
 
         setWatchSubmitting(true);
         setError(null);
@@ -117,6 +121,11 @@ export function ListingDetailsPage() {
         }
     }
 
+	const daysLeft = listing?.expiresAt ? getDaysUntilExpiry(listing.expiresAt) : null;
+    const isExpired = daysLeft !== null && daysLeft <= 0;
+    const isExpiringSoon = daysLeft !== null && daysLeft > 0 && daysLeft <= 5;
+    const isOwnListing = user?.id === listing?.userId;
+
     return (
         <main className="page-content">
             <div className="page-container listing-details-shell">
@@ -129,6 +138,28 @@ export function ListingDetailsPage() {
                 {loadingListing ? <p className="loading-spinner">Loading listing details...</p> : null}
                 {error ? <p className="status status-error">{error}</p> : null}
                 {statusMessage ? <p className="status status-success">{statusMessage}</p> : null}
+
+				{/* Expired banner — shown to the owner so they can act */}
+                {listing && isExpired && isOwnListing ? (
+                    <div className="expiry-banner expiry-banner--expired">
+                        <div className="expiry-banner-text">
+                            <strong>⏰ This listing has expired.</strong> Nobody grabbed it — that's okay!
+                            Consider donating it through Hoos ReUse to keep it out of the landfill.
+                        </div>
+                        <Link to="/hoos-reuse" className="button expiry-banner-btn">
+                            Learn about Hoos ReUse →
+                        </Link>
+                    </div>
+                ) : null}
+
+                {/* Expiring-soon warning */}
+                {listing && isExpiringSoon && isOwnListing ? (
+                    <div className="expiry-banner expiry-banner--soon">
+                        <strong>⚠️ Expiring in {daysLeft} day{daysLeft === 1 ? '' : 's'}.</strong>{' '}
+                        If it doesn't sell, consider donating via{' '}
+                        <Link to="/hoos-reuse" className="expiry-banner-inline-link">Hoos ReUse</Link>.
+                    </div>
+                ) : null}
 
                 {listing && !loadingListing ? (
                     <article className="listing-details-card">
@@ -148,6 +179,15 @@ export function ListingDetailsPage() {
 
                             <p className="listing-details-date">Listed {formatDate(listing.createdAt)}</p>
 
+							{/* Expiry date row */}
+                            {listing.expiresAt ? (
+                                <p className={`listing-expiry-date ${isExpired ? 'listing-expiry-date--expired' : ''} ${isExpiringSoon ? 'listing-expiry-date--soon' : ''}`}>
+                                    {isExpired
+                                        ? `⏰ Expired ${formatDate(listing.expiresAt)}`
+                                        : `⏳ Expires ${formatDate(listing.expiresAt)}${isExpiringSoon ? ` (${daysLeft} day${daysLeft === 1 ? '' : 's'} left)` : ''}`}
+                                </p>
+                            ) : null}
+
                             <div className="listing-categories listing-details-categories">
                                 {listing.categories.map((category) => (
                                     <span className="listing-category-chip" key={`${listing.id}-${category}`}>
@@ -158,7 +198,7 @@ export function ListingDetailsPage() {
 
                             <p className="listing-details-description">{listing.description}</p>
 
-                            {user?.id !== listing.userId ? (
+                            {!isOwnListing ? (
                                 <div className="listing-details-actions">
                                     <button
                                         className={`button ${watching ? 'button-secondary' : 'button-accent'}`}

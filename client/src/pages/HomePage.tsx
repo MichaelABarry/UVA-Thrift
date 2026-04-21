@@ -12,6 +12,12 @@ function formatDate(iso: string): string {
     return new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
 }
 
+function getDaysUntilExpiry(expiresAt: string): number {
+    const now = new Date();
+    const expiry = new Date(expiresAt);
+    return Math.ceil((expiry.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+}
+
 export function HomePage() {
     const { user, loading } = useAuth();
     const navigate = useNavigate();
@@ -411,7 +417,21 @@ export function HomePage() {
                                                     </span>
                                                 ))}
                                             </div>
+											<div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', flexWrap: 'wrap' }}>
                                             <span className="listing-date">{formatDate(listing.createdAt)}</span>
+											{listing.expiresAt ? (() => {
+                                                    const days = getDaysUntilExpiry(listing.expiresAt);
+                                                    if (days <= 0) return (
+                                                        <span className="listing-expiry-chip listing-expiry-chip--expired">⏰ Expired</span>
+                                                    );
+                                                    if (days <= 5) return (
+                                                        <span className="listing-expiry-chip listing-expiry-chip--soon">⚠️ {days}d left</span>
+                                                    );
+                                                    return (
+                                                        <span className="listing-expiry-chip listing-expiry-chip--ok">⏳ {days}d left</span>
+                                                    );
+                                                })() : null}
+                                            </div>
                                         </div>
 
                                         {expandedListPickerId === listing.id ? (

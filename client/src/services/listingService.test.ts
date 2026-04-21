@@ -29,6 +29,7 @@ describe('listingService', () => {
             price: 18.5,
             categories: ['electronics'],
             condition: 'Used - Good',
+			expirationDays: 30,
             image
         };
 
@@ -91,6 +92,7 @@ describe('listingService', () => {
             price: 22,
             categories: ['electronics', 'other'],
             condition: 'Like New',
+			expirationDays: 30,
             image
         };
 

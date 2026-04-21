@@ -5,6 +5,12 @@ import { LISTING_CATEGORY_OPTIONS, LISTING_CONDITION_OPTIONS, LISTING_SUBCATEGOR
 import { useAuth } from '../hooks/useAuth';
 import { createListing, getMyListing, updateListing } from '../services/listingService';
 
+const EXPIRATION_OPTIONS = [
+    { value: 15, label: '15 days' },
+    { value: 30, label: '30 days', default: true },
+    { value: 60, label: '60 days' },
+];
+
 export function CreateListingPage() {
     const { user, loading } = useAuth();
     const navigate = useNavigate();
@@ -15,6 +21,7 @@ export function CreateListingPage() {
     const [descriptionOpen, setDescriptionOpen] = useState(false);
     const [price, setPrice] = useState('');
     const [condition, setCondition] = useState('good');
+	const [expirationDays, setExpirationDays] = useState(30);
     const [categories, setCategories] = useState<string[]>([]);
     const [selectedImage, setSelectedImage] = useState<File | null>(null);
     const [message, setMessage] = useState<string | null>(null);
@@ -43,6 +50,8 @@ export function CreateListingPage() {
                 setPrice(response.listing.price.toString());
                 setCondition(response.listing.condition);
                 setCategories(response.listing.categories);
+
+				//when editing, don't change the expirations. Keep default
             } catch (loadError) {
                 setError(loadError instanceof Error ? loadError.message : 'Unable to load listing.');
             } finally {
@@ -93,6 +102,7 @@ export function CreateListingPage() {
                 price: Number(price),
                 categories,
                 condition,
+				expirationDays,
                 image: selectedImage,
             };
 
@@ -212,6 +222,37 @@ export function CreateListingPage() {
                                 ))}
                             </select>
                         </div>
+
+						{/* Expiration */}
+                        {!isEditing ? (
+                            <div className="cl-field">
+                                <p className="cl-label">Listing Expiration</p>
+                                <p className="cl-field-hint">
+                                    Your listing will automatically expire after this period. You'll be notified when it does.
+                                </p>
+                                <div className="cl-expiry-options">
+                                    {EXPIRATION_OPTIONS.map((opt) => (
+                                        <label
+                                            key={opt.value}
+                                            className={`cl-expiry-option${expirationDays === opt.value ? ' cl-expiry-option--selected' : ''}`}
+                                        >
+                                            <input
+                                                type="radio"
+                                                name="expirationDays"
+                                                value={opt.value}
+                                                checked={expirationDays === opt.value}
+                                                onChange={() => setExpirationDays(opt.value)}
+                                                disabled={isDisabled}
+                                                style={{ display: 'none' }}
+                                            />
+                                            <span className="cl-expiry-days">{opt.value}</span>
+                                            <span className="cl-expiry-unit">days</span>
+                                            {opt.default ? <span className="cl-expiry-badge">Default</span> : null}
+                                        </label>
+                                    ))}
+                                </div>
+                            </div>
+                        ) : null}
 
                         {/* Image upload */}
                         <div className="cl-field">
