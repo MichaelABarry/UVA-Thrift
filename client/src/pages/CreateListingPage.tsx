@@ -16,6 +16,7 @@ export function CreateListingPage() {
     const navigate = useNavigate();
     const { listingId } = useParams();
     const isEditing = Boolean(listingId);
+	const [listing, setListing] = useState<{ expiresAt?: string } | null>(null);
     const [name, setName] = useState('');
     const [description, setDescription] = useState('');
     const [descriptionOpen, setDescriptionOpen] = useState(false);
@@ -42,6 +43,7 @@ export function CreateListingPage() {
 
             try {
                 const response = await getMyListing(listingId);
+				setListing(response.listing);
                 setName(response.listing.name);
                 setDescription(response.listing.description);
                 if (response.listing.description) {
@@ -222,6 +224,23 @@ export function CreateListingPage() {
                                 ))}
                             </select>
                         </div>
+
+						{/* Expiry date display when editing */}
+                        {isEditing && listing?.expiresAt ? (
+                            <div className="cl-field">
+                                <p className="cl-label">Listing Expiration</p>
+                                <p className="cl-expiry-display">
+                                    This listing expires on{' '}
+                                    <strong>
+                                        {new Date(listing.expiresAt).toLocaleDateString('en-US', {
+                                            month: 'long',
+                                            day: 'numeric',
+                                            year: 'numeric',
+                                        })}
+                                    </strong>
+                                </p>
+                            </div>
+                        ) : null}
 
 						{/* Expiration */}
                         {!isEditing ? (
