@@ -17,6 +17,7 @@ type MessageResponse = {
     conversationId: string;
     senderId: string;
     senderEmail: string;
+    senderName: string | null;
     senderInitial: string;
     content: string;
     createdAt: string;
@@ -24,7 +25,7 @@ type MessageResponse = {
 
 type ConversationResponse = {
     id: string;
-    listingId: string;
+    listingId: string | null;
     listingName: string;
     listingImageUrl: string | null;
     listingPrice: number;
@@ -37,7 +38,7 @@ type ConversationResponse = {
 
 type ConversationSummaryResponse = {
     id: string;
-    listingId: string;
+    listingId: string | null;
     listingName: string;
     listingImageUrl: string | null;
     listingPrice: number;
@@ -56,12 +57,15 @@ const sendMessageSchema = z.object({
 });
 
 function toMessageResponse(record: MessageWithSenderRecord): MessageResponse {
+    const senderName = record.sender_display_name ?? null;
+    const displayForInitial = senderName ?? record.sender_email;
     return {
         id: record.id,
         conversationId: record.conversation_id,
         senderId: record.sender_id,
         senderEmail: record.sender_email,
-        senderInitial: record.sender_email.charAt(0).toUpperCase(),
+        senderName,
+        senderInitial: displayForInitial.charAt(0).toUpperCase(),
         content: record.content,
         createdAt: record.created_at
     };
@@ -92,9 +96,9 @@ function toConversationSummaryResponse(record: ConversationSummaryRecord): Conve
     return {
         id: record.id,
         listingId: record.listing_id,
-        listingName: record.listing_name,
+        listingName: record.listing_name ?? 'Deleted listing',
         listingImageUrl: record.listing_image_url,
-        listingPrice: record.listing_price_cents / 100,
+        listingPrice: (record.listing_price_cents ?? 0) / 100,
         otherPartyEmail: record.other_party_email,
         lastMessagePreview: record.last_message_content
             ? record.last_message_content.slice(0, 80)
@@ -145,7 +149,9 @@ export async function getConversationForUser(
         throw new HttpError('Forbidden.', 403);
     }
 
-    const listing = await findListingById(conversation.listing_id);
+    const listing = conversation.listing_id
+        ? await findListingById(conversation.listing_id)
+        : null;
     const messages = await findMessagesByConversationId(conversationId);
 
     return toConversationResponse(

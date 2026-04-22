@@ -33,6 +33,11 @@ export async function deleteSession(sessionId: string) {
     await pool.query('DELETE FROM sessions WHERE id = $1', [sessionId]);
 }
 
+// Deletes all sessions for a user.
+export async function deleteSessionsForUser(userId: string) {
+    await pool.query('DELETE FROM sessions WHERE user_id = $1', [userId]);
+}
+
 // Deletes all expired sessions.
 export async function deleteExpiredSessions() {
     await pool.query('DELETE FROM sessions WHERE expires_at <= NOW()');

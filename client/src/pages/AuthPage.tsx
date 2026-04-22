@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react';
 import type { FormEvent } from 'react';
 import { Navigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
-import { login, register, resendVerification } from '../services/authService';
+import { forgotPassword, login, register, resendVerification } from '../services/authService';
 
 export function AuthPage() {
     const { user, loading, refreshUser } = useAuth();
@@ -59,6 +59,25 @@ export function AuthPage() {
         }
     }
 
+    async function handleForgotPassword() {
+        setError(null);
+        setMessage(null);
+        setCanResend(false);
+
+        const normalizedEmail = email.trim();
+        if (!normalizedEmail) {
+            setError('Enter your email address first.');
+            return;
+        }
+
+        try {
+            await forgotPassword(normalizedEmail);
+            setMessage('If an account exists for that email, a password reset link was sent.');
+        } catch (forgotError) {
+            setError(forgotError instanceof Error ? forgotError.message : 'Unable to send password reset email.');
+        }
+    }
+
     return (
         <main className="page">
         <section className="card" aria-label="Authentication form">
@@ -90,6 +109,21 @@ export function AuthPage() {
                 {submitting ? 'Please wait...' : title}
             </button>
             </form>
+
+            {mode === 'login' ? (
+            <div className="auth-inline-actions">
+                <button
+                    className="button auth-link-button"
+                    type="button"
+                    onClick={() => {
+                        void handleForgotPassword();
+                    }}
+                    disabled={submitting}
+                >
+                    Forgot your password?
+                </button>
+            </div>
+            ) : null}
 
             <div className="switch-row">
             <span>{mode === 'login' ? 'Need an account?' : 'Already have an account?'}</span>

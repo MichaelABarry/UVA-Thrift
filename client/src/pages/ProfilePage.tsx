@@ -1,86 +1,243 @@
-import { useEffect, useState } from 'react';
-import { Navigate } from 'react-router-dom';
+import { Fragment, useEffect, useMemo, useState } from 'react';
+import type { FormEvent } from 'react';
+import { Link, Navigate, useSearchParams } from 'react-router-dom';
 import { LISTING_CATEGORY_OPTIONS } from '../constants/listingCategories';
 import { useAuth } from '../hooks/useAuth';
-import { updateProfile } from '../services/authService';
+import { createList, deleteList, getLists, removeItemFromList, updateList } from '../services/listService';
+import { deleteAccount, logout, updateProfile } from '../services/authService';
+import { deleteListing, getMyListings } from '../services/listingService';
 import { deleteListingWatch, getWatchedListings } from '../services/listingWatchService';
 import {
     createNotificationPreference,
     deleteNotificationPreference,
     getNotificationPreferences
 } from '../services/notificationPreferenceService';
+import type { ItemList } from '../types/list';
 import type { NotificationPreference } from '../types/notificationPreference';
 import type { Listing } from '../types/listing';
+
+type ProfileSection = 'general' | 'items' | 'lists' | 'alerts';
+
+type ListFormState = {
+    name: string;
+    description: string;
+};
+
+const EMPTY_LIST_FORM: ListFormState = {
+    name: '',
+    description: ''
+};
+
+const SECTION_OPTIONS: Array<{ id: ProfileSection; label: string; description: string }> = [
+    { id: 'general', label: 'General', description: 'Profile details and account settings' },
+    { id: 'items', label: 'My Items', description: 'Listings you are currently managing' },
+    { id: 'lists', label: 'Lists', description: 'Saved collections and wanted sets' },
+    { id: 'alerts', label: 'Alerts', description: 'Email alerts and watched items' }
+];
 
 function getInitial(email: string | undefined): string {
     if (!email) return '?';
     return email.charAt(0).toUpperCase();
 }
 
+function formatDate(iso: string): string {
+    return new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+}
+
+function isProfileSection(value: string | null): value is ProfileSection {
+    return value === 'general' || value === 'items' || value === 'lists' || value === 'alerts';
+}
+
 export function ProfilePage() {
     const { user, loading, setUser } = useAuth();
+    const [searchParams, setSearchParams] = useSearchParams();
+
     const [preferences, setPreferences] = useState<NotificationPreference[]>([]);
     const [watchedListings, setWatchedListings] = useState<Listing[]>([]);
+    const [listings, setListings] = useState<Listing[]>([]);
+    const [lists, setLists] = useState<ItemList[]>([]);
+
+    const [loadingPreferences, setLoadingPreferences] = useState(true);
+    const [loadingListings, setLoadingListings] = useState(true);
+    const [loadingLists, setLoadingLists] = useState(true);
+
     const [keywords, setKeywords] = useState('');
     const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
     const [profileDisplayName, setProfileDisplayName] = useState(user?.displayName ?? '');
     const [profilePhone, setProfilePhone] = useState(user?.phoneNumber ?? '');
     const [profileVenmo, setProfileVenmo] = useState(user?.venmoUsername ?? '');
+    const [listForm, setListForm] = useState<ListFormState>(EMPTY_LIST_FORM);
+    const [editingListId, setEditingListId] = useState<string | null>(null);
+    const [selectedListId, setSelectedListId] = useState<string | null>(null);
+
     const [profileSubmitting, setProfileSubmitting] = useState(false);
+    const [logoutSubmitting, setLogoutSubmitting] = useState(false);
+    const [deleteSubmitting, setDeleteSubmitting] = useState(false);
+    const [alertSubmitting, setAlertSubmitting] = useState(false);
+    const [listSubmitting, setListSubmitting] = useState(false);
+
     const [profileStatus, setProfileStatus] = useState<string | null>(null);
     const [profileError, setProfileError] = useState<string | null>(null);
-    const [loadingPreferences, setLoadingPreferences] = useState(true);
-    const [submitting, setSubmitting] = useState(false);
-    const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
+    const [alertsStatus, setAlertsStatus] = useState<string | null>(null);
+    const [alertsError, setAlertsError] = useState<string | null>(null);
+    const [listsStatus, setListsStatus] = useState<string | null>(null);
+    const [listsError, setListsError] = useState<string | null>(null);
+    const [itemsError, setItemsError] = useState<string | null>(null);
+
+    const [pendingAlertDeleteId, setPendingAlertDeleteId] = useState<string | null>(null);
     const [pendingWatchDeleteId, setPendingWatchDeleteId] = useState<string | null>(null);
-    const [statusMessage, setStatusMessage] = useState<string | null>(null);
-    const [error, setError] = useState<string | null>(null);
+    const [pendingListingDeleteId, setPendingListingDeleteId] = useState<string | null>(null);
+    const [pendingListDeleteId, setPendingListDeleteId] = useState<string | null>(null);
+    const [pendingListRemoveId, setPendingListRemoveId] = useState<string | null>(null);
+
+    const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
+    const [isAlertModalOpen, setIsAlertModalOpen] = useState(false);
+    const [isListModalOpen, setIsListModalOpen] = useState(false);
+
+    const requestedSection = searchParams.get('section');
+    const requestedListId = searchParams.get('list');
+    const activeSection: ProfileSection = isProfileSection(requestedSection)
+        ? requestedSection
+        : 'general';
 
     useEffect(() => {
-        async function loadPreferences() {
+        setProfileDisplayName(user?.displayName ?? '');
+        setProfilePhone(user?.phoneNumber ?? '');
+        setProfileVenmo(user?.venmoUsername ?? '');
+    }, [user?.displayName, user?.phoneNumber, user?.venmoUsername]);
+
+    useEffect(() => {
+        async function loadAlerts() {
             if (!user?.isEmailVerified) {
                 setLoadingPreferences(false);
                 return;
             }
 
             setLoadingPreferences(true);
-            setError(null);
+            setAlertsError(null);
 
             try {
-                const response = await getNotificationPreferences();
-                setPreferences(response.preferences);
+                const [preferencesResponse, watchedResponse] = await Promise.all([
+                    getNotificationPreferences(),
+                    getWatchedListings()
+                ]);
+                setPreferences(preferencesResponse.preferences);
+                setWatchedListings(watchedResponse.listings);
             } catch (loadError) {
-                setError(loadError instanceof Error ? loadError.message : 'Unable to load notification preferences.');
+                setAlertsError(loadError instanceof Error ? loadError.message : 'Unable to load alerts.');
             } finally {
                 setLoadingPreferences(false);
             }
         }
 
-        void loadPreferences();
+        void loadAlerts();
     }, [user?.isEmailVerified]);
 
     useEffect(() => {
-        async function loadWatchedListings() {
+        async function loadListings() {
             if (!user?.isEmailVerified) {
+                setLoadingListings(false);
                 return;
             }
 
+            setLoadingListings(true);
+            setItemsError(null);
+
             try {
-                const response = await getWatchedListings();
-                setWatchedListings(response.listings);
+                const response = await getMyListings();
+                setListings(response.listings);
             } catch (loadError) {
-                setError(loadError instanceof Error ? loadError.message : 'Unable to load watched items.');
+                setItemsError(loadError instanceof Error ? loadError.message : 'Unable to load your listings.');
+            } finally {
+                setLoadingListings(false);
             }
         }
 
-        void loadWatchedListings();
+        void loadListings();
     }, [user?.isEmailVerified]);
+
+    useEffect(() => {
+        async function loadLists() {
+            if (!user?.isEmailVerified) {
+                setLoadingLists(false);
+                return;
+            }
+
+            setLoadingLists(true);
+            setListsError(null);
+
+            try {
+                const response = await getLists();
+                setLists(response.lists);
+                const requestedId = requestedListId;
+                const defaultId = response.lists[0]?.id ?? null;
+                const nextSelectedId = response.lists.some((list) => list.id === requestedId)
+                    ? requestedId
+                    : defaultId;
+
+                setSelectedListId(nextSelectedId);
+            } catch (loadError) {
+                setListsError(loadError instanceof Error ? loadError.message : 'Unable to load your lists.');
+            } finally {
+                setLoadingLists(false);
+            }
+        }
+
+        void loadLists();
+    }, [requestedListId, user?.isEmailVerified]);
+
+    useEffect(() => {
+        if (activeSection !== 'lists' || loadingLists) {
+            return;
+        }
+
+        const validRequestedList = requestedListId && lists.some((list) => list.id === requestedListId);
+        const fallbackListId = lists[0]?.id ?? null;
+        const nextListId = validRequestedList ? requestedListId : fallbackListId;
+
+        setSelectedListId(nextListId);
+
+        if (nextListId === requestedListId) {
+            return;
+        }
+
+        const next = new URLSearchParams(searchParams);
+        if (nextListId) {
+            next.set('list', nextListId);
+        } else {
+            next.delete('list');
+        }
+        setSearchParams(next, { replace: true });
+    }, [activeSection, lists, loadingLists, requestedListId, searchParams, setSearchParams]);
+
+    const selectedList = useMemo(
+        () => lists.find((list) => list.id === selectedListId) ?? null,
+        [lists, selectedListId]
+    );
 
     if (!loading && !user?.isEmailVerified) {
         return <Navigate to="/" replace />;
     }
 
     const email = user?.email ?? 'Unknown user';
+
+    function setSection(section: ProfileSection) {
+        const next = new URLSearchParams(searchParams);
+        next.set('section', section);
+        if (section !== 'lists') {
+            next.delete('list');
+        } else if (!next.get('list') && lists[0]?.id) {
+            next.set('list', lists[0].id);
+        }
+        setSearchParams(next, { replace: true });
+    }
+
+    function selectList(listId: string) {
+        const next = new URLSearchParams(searchParams);
+        next.set('section', 'lists');
+        next.set('list', listId);
+        setSearchParams(next, { replace: true });
+    }
 
     function handleCategoryToggle(category: string) {
         setSelectedCategories((current) =>
@@ -90,20 +247,78 @@ export function ProfilePage() {
         );
     }
 
-    async function handleSaveProfile(e: React.FormEvent) {
-        e.preventDefault();
+    function upsertList(nextList: ItemList) {
+        setLists((current) => {
+            const exists = current.some((list) => list.id === nextList.id);
+            if (!exists) {
+                return [nextList, ...current];
+            }
+            return current.map((list) => (list.id === nextList.id ? nextList : list));
+        });
+    }
+
+    function openCreateListModal() {
+        setEditingListId(null);
+        setListForm(EMPTY_LIST_FORM);
+        setListsError(null);
+        setListsStatus(null);
+        setIsListModalOpen(true);
+    }
+
+    function openEditListModal(list: ItemList) {
+        setEditingListId(list.id);
+        setListForm({ name: list.name, description: list.description });
+        setListsError(null);
+        setListsStatus(null);
+        setIsListModalOpen(true);
+    }
+
+    function closeListModal() {
+        if (listSubmitting) {
+            return;
+        }
+
+        setIsListModalOpen(false);
+        setEditingListId(null);
+        setListForm(EMPTY_LIST_FORM);
+    }
+
+    function closeAlertModal() {
+        if (alertSubmitting) {
+            return;
+        }
+
+        setIsAlertModalOpen(false);
+        setKeywords('');
+        setSelectedCategories([]);
+    }
+
+    function closeProfileModal() {
+        if (profileSubmitting) {
+            return;
+        }
+
+        setIsProfileModalOpen(false);
+        setProfileDisplayName(user?.displayName ?? '');
+        setProfilePhone(user?.phoneNumber ?? '');
+        setProfileVenmo(user?.venmoUsername ?? '');
+    }
+
+    async function handleSaveProfile(event: FormEvent) {
+        event.preventDefault();
         setProfileSubmitting(true);
         setProfileError(null);
         setProfileStatus(null);
 
         try {
             const response = await updateProfile({
-                displayName:   profileDisplayName.trim()   || null,
-                phoneNumber:   profilePhone.trim()         || null,
-                venmoUsername: profileVenmo.trim()         || null
+                displayName: profileDisplayName.trim() || null,
+                phoneNumber: profilePhone.trim() || null,
+                venmoUsername: profileVenmo.trim() || null
             });
             setUser(response.user);
             setProfileStatus('Contact info saved.');
+            setIsProfileModalOpen(false);
         } catch (err) {
             setProfileError(err instanceof Error ? err.message : 'Unable to save contact info.');
         } finally {
@@ -111,11 +326,11 @@ export function ProfilePage() {
         }
     }
 
-    async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
+    async function handleCreateAlert(event: FormEvent<HTMLFormElement>) {
         event.preventDefault();
-        setSubmitting(true);
-        setError(null);
-        setStatusMessage(null);
+        setAlertSubmitting(true);
+        setAlertsError(null);
+        setAlertsStatus(null);
 
         try {
             const parsedKeywords = keywords
@@ -129,130 +344,635 @@ export function ProfilePage() {
             });
 
             setPreferences((current) => [response.preference, ...current]);
-            setKeywords('');
-            setSelectedCategories([]);
-            setStatusMessage('Notification preference saved.');
+            setAlertsStatus('Notification preference saved.');
+            closeAlertModal();
         } catch (submitError) {
-            setError(submitError instanceof Error ? submitError.message : 'Unable to save notification preference.');
+            setAlertsError(submitError instanceof Error ? submitError.message : 'Unable to save notification preference.');
         } finally {
-            setSubmitting(false);
+            setAlertSubmitting(false);
         }
     }
 
     async function handleDeletePreference(preferenceId: string) {
-        setPendingDeleteId(preferenceId);
-        setError(null);
-        setStatusMessage(null);
+        setPendingAlertDeleteId(preferenceId);
+        setAlertsError(null);
+        setAlertsStatus(null);
 
         try {
             await deleteNotificationPreference(preferenceId);
             setPreferences((current) => current.filter((preference) => preference.id !== preferenceId));
-            setStatusMessage('Notification preference removed.');
+            setAlertsStatus('Notification preference removed.');
         } catch (deleteError) {
-            setError(deleteError instanceof Error ? deleteError.message : 'Unable to delete notification preference.');
+            setAlertsError(deleteError instanceof Error ? deleteError.message : 'Unable to delete notification preference.');
         } finally {
-            setPendingDeleteId(null);
+            setPendingAlertDeleteId(null);
+        }
+    }
+
+    async function handleDeleteWatch(listingId: string) {
+        setPendingWatchDeleteId(listingId);
+        setAlertsError(null);
+        setAlertsStatus(null);
+
+        try {
+            await deleteListingWatch(listingId);
+            setWatchedListings((current) => current.filter((item) => item.id !== listingId));
+            setAlertsStatus('Watched item removed.');
+        } catch (deleteError) {
+            setAlertsError(deleteError instanceof Error ? deleteError.message : 'Unable to stop watching this item.');
+        } finally {
+            setPendingWatchDeleteId(null);
+        }
+    }
+
+    async function handleDeleteListing(listingId: string) {
+        const confirmed = window.confirm('Delete this listing? This action cannot be undone.');
+        if (!confirmed) {
+            return;
+        }
+
+        setPendingListingDeleteId(listingId);
+        setItemsError(null);
+
+        try {
+            await deleteListing(listingId);
+            setListings((current) => current.filter((listing) => listing.id !== listingId));
+        } catch (deleteError) {
+            setItemsError(deleteError instanceof Error ? deleteError.message : 'Unable to delete listing.');
+        } finally {
+            setPendingListingDeleteId(null);
+        }
+    }
+
+    async function handleSubmitList(event: FormEvent<HTMLFormElement>) {
+        event.preventDefault();
+        setListSubmitting(true);
+        setListsError(null);
+        setListsStatus(null);
+
+        try {
+            if (!editingListId) {
+                const response = await createList(listForm);
+                upsertList(response.list);
+                setSelectedListId(response.list.id);
+                setListsStatus('List created.');
+                closeListModal();
+                return;
+            }
+
+            const response = await updateList(editingListId, listForm);
+            upsertList(response.list);
+            setSelectedListId(response.list.id);
+            setListsStatus('List updated.');
+            closeListModal();
+        } catch (submitError) {
+            setListsError(submitError instanceof Error ? submitError.message : 'Unable to save your list.');
+        } finally {
+            setListSubmitting(false);
+        }
+    }
+
+    async function handleDeleteList(listId: string) {
+        const confirmed = window.confirm('Delete this list? Its saved items will be removed from the list.');
+        if (!confirmed) {
+            return;
+        }
+
+        setPendingListDeleteId(listId);
+        setListsError(null);
+        setListsStatus(null);
+
+        try {
+            await deleteList(listId);
+            setLists((current) => current.filter((list) => list.id !== listId));
+            setSelectedListId((current) => (current === listId ? null : current));
+            setListsStatus('List deleted.');
+        } catch (deleteError) {
+            setListsError(deleteError instanceof Error ? deleteError.message : 'Unable to delete this list.');
+        } finally {
+            setPendingListDeleteId(null);
+        }
+    }
+
+    async function handleRemoveItem(listId: string, listingId: string) {
+        setPendingListRemoveId(listingId);
+        setListsError(null);
+        setListsStatus(null);
+
+        try {
+            const response = await removeItemFromList(listId, listingId);
+            upsertList(response.list);
+            setListsStatus('Item removed from list.');
+        } catch (removeError) {
+            setListsError(removeError instanceof Error ? removeError.message : 'Unable to remove that item from the list.');
+        } finally {
+            setPendingListRemoveId(null);
+        }
+    }
+
+    async function handleLogout() {
+        setLogoutSubmitting(true);
+        setProfileError(null);
+        setProfileStatus(null);
+
+        try {
+            await logout();
+            setUser(null);
+        } catch (err) {
+            setProfileError(err instanceof Error ? err.message : 'Unable to log out.');
+        } finally {
+            setLogoutSubmitting(false);
+        }
+    }
+
+    async function handleDeleteAccount() {
+        const confirmed = window.confirm('Delete your account permanently? This will remove your listings, alerts, watches, lists, and conversations.');
+        if (!confirmed) {
+            return;
+        }
+
+        setDeleteSubmitting(true);
+        setProfileError(null);
+        setProfileStatus(null);
+
+        try {
+            await deleteAccount();
+            setUser(null);
+        } catch (err) {
+            setProfileError(err instanceof Error ? err.message : 'Unable to delete account.');
+        } finally {
+            setDeleteSubmitting(false);
         }
     }
 
     return (
         <main className="page-content">
-            <div className="page-container profile-layout">
-                <section className="card profile-card" aria-label="Profile page">
-                    <div className="profile-header">
-                        <div className="profile-avatar" aria-hidden="true">{getInitial(user?.email)}</div>
-                        <div className="profile-info">
-                            <h1 className="profile-name">{email.split('@')[0]}</h1>
-                            <p className="profile-email-sub">{email}</p>
+            <div className="page-container profile-workspace">
+                <aside className="profile-sidebar-shell" aria-label="Profile navigation">
+                    <div className="card profile-sidebar-card">
+                        <div className="profile-header profile-sidebar-header">
+                            <div className="profile-avatar" aria-hidden="true">{getInitial(user?.displayName ?? user?.email)}</div>
+                            <div className="profile-info">
+                                <h1 className="profile-name">{user?.displayName || email.split('@')[0]}</h1>
+                                <p className="profile-email-sub">{email}</p>
+                            </div>
+                        </div>
+
+                        <nav className="profile-section-nav">
+                            {SECTION_OPTIONS.map((section) => (
+                                <Fragment key={section.id}>
+                                    <button
+                                        className={`profile-section-link ${activeSection === section.id ? 'profile-section-link-active' : ''}`}
+                                        type="button"
+                                        onClick={() => setSection(section.id)}
+                                    >
+                                        <span className="profile-section-link-label">{section.label}</span>
+                                        <span className="profile-section-link-description">{section.description}</span>
+                                    </button>
+                                    {section.id === 'lists' && activeSection === 'lists' ? (
+                                        <div className="profile-section-subnav" aria-label="Your saved lists">
+                                            {loadingLists ? (
+                                                <span className="profile-section-subnav-note">Loading lists...</span>
+                                            ) : !lists.length ? (
+                                                <>
+                                                    <button
+                                                        className="profile-section-sublink profile-section-sublink-create"
+                                                        type="button"
+                                                        onClick={openCreateListModal}
+                                                    >
+                                                        <span className="profile-section-sublink-label">+ New List...</span>
+                                                    </button>
+                                                </>
+                                            ) : (
+                                                <>
+                                                    {lists.map((list) => (
+                                                        <button
+                                                            key={list.id}
+                                                            className={`profile-section-sublink ${selectedListId === list.id ? 'profile-section-sublink-active' : ''}`}
+                                                            type="button"
+                                                            onClick={() => selectList(list.id)}
+                                                        >
+                                                            <span className="profile-section-sublink-label">{list.name}</span>
+                                                            <span className="profile-section-sublink-count">{list.items.length}</span>
+                                                        </button>
+                                                    ))}
+                                                    <button
+                                                        className="profile-section-sublink profile-section-sublink-create"
+                                                        type="button"
+                                                        onClick={openCreateListModal}
+                                                    >
+                                                        <span className="profile-section-sublink-label">+ New List...</span>
+                                                    </button>
+                                                </>
+                                            )}
+                                        </div>
+                                    ) : null}
+                                </Fragment>
+                            ))}
+                        </nav>
+
+                        <div className="profile-sidebar-actions">
+                            <button
+                                className="button button-secondary profile-sidebar-button"
+                                type="button"
+                                onClick={() => {
+                                    void handleLogout();
+                                }}
+                                disabled={logoutSubmitting}
+                            >
+                                {logoutSubmitting ? 'Logging Out...' : 'Log Out'}
+                            </button>
+                            <button
+                                className="button lists-danger-button profile-sidebar-button"
+                                type="button"
+                                onClick={() => {
+                                    void handleDeleteAccount();
+                                }}
+                                disabled={deleteSubmitting}
+                            >
+                                {deleteSubmitting ? 'Deleting...' : 'Delete Account'}
+                            </button>
                         </div>
                     </div>
+                </aside>
 
-                    <ul className="profile-detail-list">
-                        <li className="profile-detail-item">
-                            <span className="profile-detail-label">Email verified</span>
-                            <span className="profile-detail-value">{user?.isEmailVerified ? 'Yes' : 'No'}</span>
-                        </li>
-                        <li className="profile-detail-item">
-                            <span className="profile-detail-label">Platform</span>
-                            <span className="profile-detail-value">UVA Thrift</span>
-                        </li>
-                        <li className="profile-detail-item">
-                            <span className="profile-detail-label">Saved alerts</span>
-                            <span className="profile-detail-value">{preferences.length + watchedListings.length}</span>
-                        </li>
-                    </ul>
-
-                    <hr className="profile-divider" />
-
-                    <h2 className="section-heading">Contact Info</h2>
-                    <p className="profile-contact-hint">
-                        Shared privately with the other party once you start a conversation.
-                    </p>
-
-                    {profileStatus ? <p className="status status-success">{profileStatus}</p> : null}
-                    {profileError  ? <p className="status status-error">{profileError}</p>   : null}
-
-                    <form className="form-grid" onSubmit={handleSaveProfile}>
-                        <label className="setup-profile-label">
-                            <span className="sidebar-label">Display name</span>
-                            <input
-                                className="input"
-                                type="text"
-                                value={profileDisplayName}
-                                onChange={(e) => setProfileDisplayName(e.target.value)}
-                                placeholder="e.g. John Doe"
-                                maxLength={100}
-                                disabled={profileSubmitting}
-                            />
-                        </label>
-
-                        <label className="setup-profile-label">
-                            <span className="sidebar-label">Phone number</span>
-                            <input
-                                className="input"
-                                type="tel"
-                                value={profilePhone}
-                                onChange={(e) => setProfilePhone(e.target.value)}
-                                placeholder="e.g. 555-867-5309"
-                                maxLength={30}
-                                disabled={profileSubmitting}
-                            />
-                        </label>
-
-                        <label className="setup-profile-label">
-                            <span className="sidebar-label">Venmo username</span>
-                            <div className="setup-profile-venmo-row">
-                                <span className="setup-profile-at">@</span>
-                                <input
-                                    className="input"
-                                    type="text"
-                                    value={profileVenmo}
-                                    onChange={(e) => setProfileVenmo(e.target.value)}
-                                    placeholder="your-venmo"
-                                    maxLength={50}
-                                    disabled={profileSubmitting}
-                                />
+                <section className="profile-content-area">
+                    {activeSection === 'general' ? (
+                        <section className="card profile-panel-card" aria-label="General profile information">
+                            <div className="profile-panel-header">
+                                <div>
+                                    <h2 className="card-title">General Profile</h2>
+                                    <p className="card-subtitle">
+                                        Keep your contact details current so buyers and sellers can reach you once a conversation starts.
+                                    </p>
+                                </div>
+                                <button
+                                    className="button button-secondary"
+                                    type="button"
+                                    onClick={() => {
+                                        setProfileError(null);
+                                        setProfileStatus(null);
+                                        setIsProfileModalOpen(true);
+                                    }}
+                                >
+                                    Edit Profile
+                                </button>
                             </div>
-                        </label>
 
-                        <button
-                            className="button button-accent"
-                            type="submit"
-                            disabled={profileSubmitting}
-                        >
-                            {profileSubmitting ? 'Saving...' : 'Save Contact Info'}
-                        </button>
-                    </form>
+                            <div className="profile-overview-grid">
+                                <div className="profile-overview-item">
+                                    <span className="profile-overview-label">Email</span>
+                                    <span className="profile-overview-value">{email}</span>
+                                </div>
+                                <div className="profile-overview-item">
+                                    <span className="profile-overview-label">Phone</span>
+                                    <span className="profile-overview-value">{user?.phoneNumber || 'Not provided'}</span>
+                                </div>
+                                <div className="profile-overview-item">
+                                    <span className="profile-overview-label">Venmo</span>
+                                    <span className="profile-overview-value">{user?.venmoUsername ? `@${user.venmoUsername}` : 'Not provided'}</span>
+                                </div>
+                                <div className="profile-overview-item">
+                                    <span className="profile-overview-label">Display Name</span>
+                                    <span className="profile-overview-value">{user?.displayName || 'Not provided'}</span>
+                                </div>
+                            </div>
+
+                            {profileStatus ? <p className="status status-success">{profileStatus}</p> : null}
+                            {profileError ? <p className="status status-error">{profileError}</p> : null}
+                        </section>
+                    ) : null}
+
+                    {activeSection === 'items' ? (
+                        <section className="profile-section-stack" aria-label="My items">
+                            <div className="profile-panel-topbar">
+                                <div>
+                                    <h2 className="card-title">My Items</h2>
+                                    <p className="card-subtitle">Manage the items you have listed for other UVA students.</p>
+                                </div>
+                            </div>
+
+                            {loadingListings ? <p className="loading-spinner">Loading your items...</p> : null}
+                            {itemsError ? <p className="status status-error">{itemsError}</p> : null}
+
+                            {!loadingListings && !itemsError && !listings.length ? (
+                                <div className="card profile-panel-card empty-state my-items-empty-state">
+
+                                    <h2 className="empty-state-title">You have not listed anything yet</h2>
+                                    <p className="empty-state-body">
+                                        Start with one item, then come back here anytime to edit or remove it.
+                                    </p>
+                                </div>
+                            ) : null}
+
+                            {!loadingListings && listings.length ? (
+                                <div className="listing-grid" aria-label="Your uploaded items">
+                                    {listings.map((listing) => (
+                                        <article className="listing-card" key={listing.id}>
+                                            {listing.imageUrl ? (
+                                                <div className="listing-image-frame">
+                                                    <img className="listing-image" src={listing.imageUrl} alt={listing.name} />
+                                                </div>
+                                            ) : (
+                                                <div className="listing-image-placeholder">No image</div>
+                                            )}
+
+                                            <div className="listing-header">
+                                                <h3 className="listing-title">{listing.name}</h3>
+                                                <p className="listing-price">${listing.price.toFixed(2)}</p>
+                                            </div>
+
+                                            <p className="listing-description">{listing.description}</p>
+
+                                            <div className="listing-footer">
+                                                <div className="listing-categories">
+                                                    {listing.categories.map((category) => (
+                                                        <span className="listing-category-chip" key={`${listing.id}-${category}`}>
+                                                            {category}
+                                                        </span>
+                                                    ))}
+                                                </div>
+                                                <span className="listing-date">{formatDate(listing.createdAt)}</span>
+                                            </div>
+
+                                            <div className="listing-actions">
+                                                <Link className="button button-secondary listing-action-button" to={`/listings/${listing.id}/edit`}>
+                                                    Edit
+                                                </Link>
+                                                <button
+                                                    className="button listing-action-button listing-delete-button"
+                                                    type="button"
+                                                    onClick={() => {
+                                                        void handleDeleteListing(listing.id);
+                                                    }}
+                                                    disabled={pendingListingDeleteId === listing.id}
+                                                >
+                                                    {pendingListingDeleteId === listing.id ? 'Deleting...' : 'Delete'}
+                                                </button>
+                                            </div>
+                                        </article>
+                                    ))}
+                                </div>
+                            ) : null}
+                        </section>
+                    ) : null}
+
+                    {activeSection === 'lists' ? (
+                        <section className="profile-section-stack" aria-label="Lists section">
+                            <div className="profile-panel-topbar">
+                                <div>
+                                    <h2 className="card-title">Lists</h2>
+                                    <p className="card-subtitle">Build themed collections like Dorm Room, First Apartment, or Lab Essentials.</p>
+                                </div>
+                            </div>
+
+                            {listsError ? <p className="status status-error">{listsError}</p> : null}
+                            {listsStatus ? <p className="status status-success">{listsStatus}</p> : null}
+                            {loadingLists ? <p className="loading-spinner">Loading your lists...</p> : null}
+
+                            {!loadingLists ? (
+                                <div className="lists-detail-panel profile-lists-panel">
+                                    <div className="lists-detail-header profile-section-header-row">
+                                        <div>
+                                            <h2 className="section-heading">{selectedList ? selectedList.name : ''}</h2>
+                                            <p className="card-subtitle">
+                                                {selectedList
+                                                    ? selectedList.description || `Updated ${formatDate(selectedList.updatedAt)}`
+                                                    : ''}
+                                            </p>
+                                        </div>
+
+                                        {selectedList ? (
+                                            <div className="profile-inline-actions">
+                                                <button className="button button-secondary" type="button" onClick={() => openEditListModal(selectedList)}>
+                                                    Edit List
+                                                </button>
+                                                <button
+                                                    className="button lists-danger-button"
+                                                    type="button"
+                                                    onClick={() => {
+                                                        void handleDeleteList(selectedList.id);
+                                                    }}
+                                                    disabled={pendingListDeleteId === selectedList.id}
+                                                >
+                                                    {pendingListDeleteId === selectedList.id ? 'Deleting...' : 'Delete List'}
+                                                </button>
+                                            </div>
+                                        ) : null}
+                                    </div>
+
+                                    {!lists.length ? (
+                                        <div className="empty-state lists-detail-empty">
+                                            <h2 className="empty-state-title">No lists yet</h2>
+                                            <p className="empty-state-body">
+                                                Click "+ New List" in the sidebar to create one.
+                                            </p>
+                                        </div>
+                                    ) : !selectedList ? (
+                                        <div className="empty-state lists-detail-empty">
+                                            <h2 className="empty-state-title">Pick a list to inspect it</h2>
+                                            <p className="empty-state-body">
+                                                Select a list from the left sidebar, then add items from the marketplace on the <Link to="/home">Home</Link> page.
+                                            </p>
+                                        </div>
+                                    ) : !selectedList.items.length ? (
+                                        <div className="empty-state lists-detail-empty">
+                                            <h2 className="empty-state-title">This list is empty</h2>
+                                            <p className="empty-state-body">
+                                                Browse the <Link to="/home">marketplace</Link> and use the add-to-list control on any item card.
+                                            </p>
+                                        </div>
+                                    ) : (
+                                        <div className="listing-grid" aria-label={`${selectedList.name} items`}>
+                                            {selectedList.items.map((item) => (
+                                                <article className="listing-card" key={`${selectedList.id}-${item.id}`}>
+                                                    <Link className="listing-card-link" to={`/listings/${item.id}`}>
+                                                        {item.imageUrl ? (
+                                                            <div className="listing-image-frame">
+                                                                <img className="listing-image" src={item.imageUrl} alt={item.name} />
+                                                            </div>
+                                                        ) : (
+                                                            <div className="listing-image-placeholder">No image</div>
+                                                        )}
+
+                                                        <div className="listing-header">
+                                                            <h3 className="listing-title">{item.name}</h3>
+                                                            <p className="listing-price">${item.price.toFixed(2)}</p>
+                                                        </div>
+
+                                                        <p className="listing-description">{item.description}</p>
+
+                                                        <div className="listing-footer">
+                                                            <div className="listing-categories">
+                                                                {item.categories.map((category) => (
+                                                                    <span className="listing-category-chip" key={`${item.id}-${category}`}>
+                                                                        {category}
+                                                                    </span>
+                                                                ))}
+                                                            </div>
+                                                            <span className="listing-date">{formatDate(item.createdAt)}</span>
+                                                        </div>
+                                                    </Link>
+
+                                                    <div className="listing-actions">
+                                                        <button
+                                                            className="button listing-action-button lists-danger-button"
+                                                            type="button"
+                                                            onClick={() => {
+                                                                void handleRemoveItem(selectedList.id, item.id);
+                                                            }}
+                                                            disabled={pendingListRemoveId === item.id}
+                                                        >
+                                                            {pendingListRemoveId === item.id ? 'Removing...' : 'Remove from List'}
+                                                        </button>
+                                                    </div>
+                                                </article>
+                                            ))}
+                                        </div>
+                                    )}
+                                </div>
+                            ) : null}
+                        </section>
+                    ) : null}
+
+                    {activeSection === 'alerts' ? (
+                        <section className="profile-section-stack" aria-label="Alerts section">
+                            <div className="profile-panel-topbar profile-alerts-topbar">
+                                <div className="profile-alerts-topbar-copy">
+                                    <h2 className="card-title">Alerts</h2>
+                                    <p className="card-subtitle">Stay ahead of new listings and changes to the items you care about. We will email you when an item is posted that matches your alerts, or when an item you are watching is updated or sold.</p>
+                                </div>
+                            </div>
+
+                            {alertsError ? <p className="status status-error">{alertsError}</p> : null}
+                            {alertsStatus ? <p className="status status-success">{alertsStatus}</p> : null}
+                            {loadingPreferences ? <p className="loading-spinner">Loading your alerts...</p> : null}
+
+                            <section className="profile-alerts-panel" aria-label="Saved email alerts">
+                                <div className="profile-alerts-header">
+                                    <h2 className="section-heading">Saved Alerts</h2>
+                                    <button className="button button-secondary" type="button" onClick={() => setIsAlertModalOpen(true)}>
+                                        + New Alert
+                                    </button>
+                                </div>
+
+                                {!loadingPreferences && !preferences.length ? (
+                                    <div className="empty-state profile-alerts-empty">
+                                        <h2 className="empty-state-title">No alerts yet</h2>
+                                        <p className="empty-state-body">
+                                            Use Add Alert to save keywords or categories and get notified when a matching item is posted.
+                                        </p>
+                                    </div>
+                                ) : null}
+
+                                {!loadingPreferences && preferences.length ? (
+                                    <div className="profile-alerts-list">
+                                        {preferences.map((preference) => (
+                                            <article className="profile-alert-card" key={preference.id}>
+                                                <div className="profile-alert-card-body profile-alert-card-body-stacked">
+                                                    <div className="profile-alert-field">
+                                                        <span className="profile-alert-field-label">Keywords</span>
+                                                        <div className="listing-categories">
+                                                            {preference.keywords.length ? preference.keywords.map((keyword) => (
+                                                                <span className="listing-category-chip" key={`${preference.id}-kw-${keyword}`}>
+                                                                    {keyword}
+                                                                </span>
+                                                            )) : <span className="profile-alert-empty">Any keyword</span>}
+                                                        </div>
+                                                    </div>
+                                                    <div className="profile-alert-field">
+                                                        <span className="profile-alert-field-label">Categories</span>
+                                                        <div className="listing-categories">
+                                                            {preference.categories.length ? preference.categories.map((category) => (
+                                                                <span className="listing-category-chip" key={`${preference.id}-cat-${category}`}>
+                                                                    {category}
+                                                                </span>
+                                                            )) : <span className="profile-alert-empty">Any category</span>}
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                <button
+                                                    className="button profile-alert-delete-button"
+                                                    type="button"
+                                                    onClick={() => {
+                                                        void handleDeletePreference(preference.id);
+                                                    }}
+                                                    disabled={pendingAlertDeleteId === preference.id}
+                                                >
+                                                    {pendingAlertDeleteId === preference.id ? 'Removing...' : 'Delete'}
+                                                </button>
+                                            </article>
+                                        ))}
+                                    </div>
+                                ) : null}
+                            </section>
+
+                            <section className="profile-alerts-panel" aria-label="Watched items">
+                                <div className="profile-alerts-header">
+                                    <h2 className="section-heading">Watched Items</h2>
+                                </div>
+
+                                {!watchedListings.length ? (
+                                    <div className="empty-state profile-alerts-empty">
+                                        <h2 className="empty-state-title">No watched items</h2>
+                                        <p className="empty-state-body">
+                                            Open any listing detail page and choose <strong>Email Me About Changes</strong> to follow it.
+                                        </p>
+                                    </div>
+                                ) : (
+                                    <div className="profile-alerts-list">
+                                        {watchedListings.map((listing) => (
+                                            <article className="profile-alert-card profile-watch-card" key={listing.id}>
+                                                <div className="profile-alert-card-header">
+                                                    <Link className="profile-watch-link" to={`/listings/${listing.id}`}>
+                                                        <div className="profile-watch-main">
+                                                            {listing.imageUrl ? (
+                                                                <img className="profile-watch-thumb" src={listing.imageUrl} alt={listing.name} />
+                                                            ) : (
+                                                                <div className="profile-watch-thumb-placeholder" aria-hidden="true">No image</div>
+                                                            )}
+                                                            <div className="profile-watch-copy">
+                                                                <h3 className="profile-alert-card-title">{listing.name}</h3>
+                                                                <p className="profile-watch-price">${listing.price.toFixed(2)}</p>
+                                                            </div>
+                                                        </div>
+                                                    </Link>
+                                                    <div className="profile-watch-actions">
+                                                        <button
+                                                            className="button profile-alert-delete-button"
+                                                            type="button"
+                                                            onClick={() => {
+                                                                void handleDeleteWatch(listing.id);
+                                                            }}
+                                                            disabled={pendingWatchDeleteId === listing.id}
+                                                        >
+                                                            {pendingWatchDeleteId === listing.id ? 'Removing...' : 'Stop Watching'}
+                                                        </button>
+                                                    </div>
+                                                </div>
+
+                                                <p className="lists-list-card-body">{listing.description}</p>
+                                            </article>
+                                        ))}
+                                    </div>
+                                )}
+                            </section>
+                        </section>
+                    ) : null}
                 </section>
+            </div>
 
-                <section className="profile-notification-section">
-                    <div className="card card-wide profile-notification-card">
-                        <h2 className="card-title">Listing Email Alerts</h2>
-                        <p className="card-subtitle">
-                            Save keywords or categories and UVA Thrift will email you when a matching item is posted.
-                        </p>
+            {isAlertModalOpen ? (
+                <div className="profile-modal-backdrop" role="presentation" onClick={closeAlertModal}>
+                    <div className="profile-modal-card" role="dialog" aria-modal="true" aria-label="Create alert" onClick={(event) => event.stopPropagation()}>
+                        <div className="profile-modal-header">
+                            <div>
+                                <h2 className="card-title">Create Alert</h2>
+                                <p className="card-subtitle">Choose keywords or categories and UVA Thrift will email you when a match is posted.</p>
+                            </div>
+                        </div>
 
-                        <form className="form-grid" onSubmit={handleSubmit}>
+                        <form className="form-grid" onSubmit={handleCreateAlert}>
                             <label>
                                 <span className="sidebar-label">Keywords</span>
                                 <input
@@ -261,7 +981,7 @@ export function ProfilePage() {
                                     value={keywords}
                                     onChange={(event) => setKeywords(event.target.value)}
                                     placeholder="desk lamp, monitor, mini fridge"
-                                    disabled={submitting}
+                                    disabled={alertSubmitting}
                                 />
                             </label>
 
@@ -274,7 +994,7 @@ export function ProfilePage() {
                                                 type="checkbox"
                                                 checked={selectedCategories.includes(category.value)}
                                                 onChange={() => handleCategoryToggle(category.value)}
-                                                disabled={submitting}
+                                                disabled={alertSubmitting}
                                             />
                                             <span>{category.label}</span>
                                         </label>
@@ -282,136 +1002,135 @@ export function ProfilePage() {
                                 </div>
                             </fieldset>
 
-                            <button className="button button-accent" type="submit" disabled={submitting}>
-                                {submitting ? 'Saving...' : 'Save Alert'}
-                            </button>
+                            <div className="profile-modal-actions">
+                                <button className="button button-secondary" type="button" onClick={closeAlertModal} disabled={alertSubmitting}>
+                                    Cancel
+                                </button>
+                                <button className="button button-accent" type="submit" disabled={alertSubmitting}>
+                                    {alertSubmitting ? 'Saving...' : 'Save Alert'}
+                                </button>
+                            </div>
                         </form>
-
-                        {error ? <p className="status status-error">{error}</p> : null}
-                        {statusMessage ? <p className="status status-success">{statusMessage}</p> : null}
                     </div>
+                </div>
+            ) : null}
 
-                    <section className="profile-alerts-panel" aria-label="Saved email alerts">
-                        <div className="profile-alerts-header">
-                            <h2 className="section-heading">Saved Alerts</h2>
+            {isProfileModalOpen ? (
+                <div className="profile-modal-backdrop" role="presentation" onClick={closeProfileModal}>
+                    <div className="profile-modal-card" role="dialog" aria-modal="true" aria-label="Edit profile" onClick={(event) => event.stopPropagation()}>
+                        <div className="profile-modal-header">
+                            <div>
+                                <h2 className="card-title">Edit Profile</h2>
+                                <p className="card-subtitle">Update the details you want to share once a conversation starts.</p>
+                            </div>
                         </div>
 
-                        {loadingPreferences ? <p className="loading-spinner">Loading your alerts...</p> : null}
+                        <form className="form-grid" onSubmit={handleSaveProfile}>
+                            <label className="setup-profile-label">
+                                <span className="sidebar-label">Display name</span>
+                                <input
+                                    className="input"
+                                    type="text"
+                                    value={profileDisplayName}
+                                    onChange={(event) => setProfileDisplayName(event.target.value)}
+                                    placeholder="e.g. John Doe"
+                                    maxLength={100}
+                                    disabled={profileSubmitting}
+                                />
+                            </label>
 
-                        {!loadingPreferences && !preferences.length ? (
-                            <div className="empty-state profile-alerts-empty">
-                                <h2 className="empty-state-title">No alerts yet</h2>
-                                <p className="empty-state-body">
-                                    Add a few keywords or categories above to start receiving email notifications.
-                                </p>
+                            <label className="setup-profile-label">
+                                <span className="sidebar-label">Phone number</span>
+                                <input
+                                    className="input"
+                                    type="tel"
+                                    value={profilePhone}
+                                    onChange={(event) => setProfilePhone(event.target.value)}
+                                    placeholder="e.g. 555-867-5309"
+                                    maxLength={30}
+                                    disabled={profileSubmitting}
+                                />
+                            </label>
+
+                            <label className="setup-profile-label">
+                                <span className="sidebar-label">Venmo username</span>
+                                <div className="setup-profile-venmo-row">
+                                    <span className="setup-profile-at">@</span>
+                                    <input
+                                        className="input"
+                                        type="text"
+                                        value={profileVenmo}
+                                        onChange={(event) => setProfileVenmo(event.target.value)}
+                                        placeholder="your-venmo"
+                                        maxLength={50}
+                                        disabled={profileSubmitting}
+                                    />
+                                </div>
+                            </label>Use the New List button above to create one, then save items from the marketplace into it.
+
+                            <div className="profile-modal-actions">
+                                <button className="button button-secondary" type="button" onClick={closeProfileModal} disabled={profileSubmitting}>
+                                    Cancel
+                                </button>
+                                <button className="button button-accent" type="submit" disabled={profileSubmitting}>
+                                    {profileSubmitting ? 'Saving...' : 'Save Contact Info'}
+                                </button>
                             </div>
-                        ) : null}
+                        </form>
+                    </div>
+                </div>
+            ) : null}
 
-                        {!loadingPreferences && preferences.length ? (
-                            <div className="profile-alerts-list">
-                                {preferences.map((preference) => (
-                                    <article className="profile-alert-card" key={preference.id}>
-                                        <div className="profile-alert-card-header">
-                                            <h3 className="profile-alert-card-title">Saved alert</h3>
-                                            <button
-                                                className="button profile-alert-delete-button"
-                                                type="button"
-                                                onClick={() => handleDeletePreference(preference.id)}
-                                                disabled={pendingDeleteId === preference.id}
-                                            >
-                                                {pendingDeleteId === preference.id ? 'Removing...' : 'Delete'}
-                                            </button>
-                                        </div>
-
-                                        <div className="profile-alert-group">
-                                            <span className="profile-alert-label">Keywords</span>
-                                            <div className="listing-categories">
-                                                {preference.keywords.length ? preference.keywords.map((keyword) => (
-                                                    <span className="listing-category-chip" key={`${preference.id}-${keyword}`}>
-                                                        {keyword}
-                                                    </span>
-                                                )) : <span className="profile-alert-empty">None</span>}
-                                            </div>
-                                        </div>
-
-                                        <div className="profile-alert-group">
-                                            <span className="profile-alert-label">Categories</span>
-                                            <div className="listing-categories">
-                                                {preference.categories.length ? preference.categories.map((category) => (
-                                                    <span className="listing-category-chip" key={`${preference.id}-${category}`}>
-                                                        {category}
-                                                    </span>
-                                                )) : <span className="profile-alert-empty">None</span>}
-                                            </div>
-                                        </div>
-                                    </article>
-                                ))}
+            {isListModalOpen ? (
+                <div className="profile-modal-backdrop" role="presentation" onClick={closeListModal}>
+                    <div className="profile-modal-card" role="dialog" aria-modal="true" aria-label={editingListId ? 'Edit list' : 'Create list'} onClick={(event) => event.stopPropagation()}>
+                        <div className="profile-modal-header">
+                            <div>
+                                <h2 className="card-title">{editingListId ? 'Edit List' : 'Create a List'}</h2>
+                                <p className="card-subtitle">Name the list clearly so you can recognize it when saving items from the marketplace.</p>
                             </div>
-                        ) : null}
-                    </section>
-
-                    <section className="profile-alerts-panel" aria-label="Watched items">
-                        <div className="profile-alerts-header">
-                            <h2 className="section-heading">Watched Items</h2>
                         </div>
 
-                        {!watchedListings.length ? (
-                            <div className="empty-state profile-alerts-empty">
-                                <h2 className="empty-state-title">No watched items</h2>
-                                <p className="empty-state-body">
-                                    Open any listing detail page and choose <strong>Email Me About Changes</strong> to follow it.
-                                </p>
-                            </div>
-                        ) : (
-                            <div className="profile-alerts-list">
-                                {watchedListings.map((listing) => (
-                                    <article className="profile-alert-card" key={listing.id}>
-                                        <div className="profile-alert-card-header">
-                                            <div>
-                                                <h3 className="profile-alert-card-title">{listing.name}</h3>
-                                                <p className="profile-watch-price">${listing.price.toFixed(2)}</p>
-                                            </div>
-                                            <div className="profile-watch-actions">
-                                                <button
-                                                    className="button profile-alert-delete-button"
-                                                    type="button"
-                                                    onClick={async () => {
-                                                        setPendingWatchDeleteId(listing.id);
-                                                        setError(null);
-                                                        setStatusMessage(null);
+                        <form className="form-grid" onSubmit={handleSubmitList}>
+                            <label>
+                                <span className="sidebar-label">Name</span>
+                                <input
+                                    className="input"
+                                    type="text"
+                                    maxLength={120}
+                                    value={listForm.name}
+                                    onChange={(event) => setListForm((current) => ({ ...current, name: event.target.value }))}
+                                    placeholder="Dorm Room"
+                                    required
+                                    disabled={listSubmitting}
+                                />
+                            </label>
 
-                                                        try {
-                                                            await deleteListingWatch(listing.id);
-                                                            setWatchedListings((current) => current.filter((item) => item.id !== listing.id));
-                                                            setStatusMessage('Watched item removed.');
-                                                        } catch (deleteError) {
-                                                            setError(deleteError instanceof Error ? deleteError.message : 'Unable to stop watching this item.');
-                                                        } finally {
-                                                            setPendingWatchDeleteId(null);
-                                                        }
-                                                    }}
-                                                    disabled={pendingWatchDeleteId === listing.id}
-                                                >
-                                                    {pendingWatchDeleteId === listing.id ? 'Removing...' : 'Stop Watching'}
-                                                </button>
-                                            </div>
-                                        </div>
+                            <label>
+                                <span className="sidebar-label">Description</span>
+                                <textarea
+                                    className="input"
+                                    rows={4}
+                                    maxLength={1000}
+                                    value={listForm.description}
+                                    onChange={(event) => setListForm((current) => ({ ...current, description: event.target.value }))}
+                                    placeholder="Desk lamp, bedding, storage bins, and other first-semester essentials."
+                                    disabled={listSubmitting}
+                                />
+                            </label>
 
-                                        <p className="lists-list-card-body">{listing.description}</p>
-                                        <div className="listing-categories">
-                                            {listing.categories.map((category) => (
-                                                <span className="listing-category-chip" key={`${listing.id}-${category}`}>
-                                                    {category}
-                                                </span>
-                                            ))}
-                                        </div>
-                                    </article>
-                                ))}
+                            <div className="profile-modal-actions">
+                                <button className="button button-secondary" type="button" onClick={closeListModal} disabled={listSubmitting}>
+                                    Cancel
+                                </button>
+                                <button className="button button-accent" type="submit" disabled={listSubmitting}>
+                                    {listSubmitting ? 'Saving...' : editingListId ? 'Save Changes' : 'Create List'}
+                                </button>
                             </div>
-                        )}
-                    </section>
-                </section>
-            </div>
+                        </form>
+                    </div>
+                </div>
+            ) : null}
         </main>
     );
 }

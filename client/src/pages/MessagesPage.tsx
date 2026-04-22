@@ -64,7 +64,7 @@ export function MessagesPage() {
 
                 {!loadingConversations && !error && conversations.length === 0 ? (
                     <div className="empty-state">
-                        <div className="empty-state-icon">💬</div>
+
                         <h2 className="empty-state-title">No messages yet</h2>
                         <p className="empty-state-body">
                             Browse the marketplace and message a seller to get started.

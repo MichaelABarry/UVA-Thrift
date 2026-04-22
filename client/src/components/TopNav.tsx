@@ -1,6 +1,4 @@
 import { Link, useLocation } from 'react-router-dom';
-import { useAuth } from '../hooks/useAuth';
-import { logout } from '../services/authService';
 
 type NavLink = {
     to: string;
@@ -10,21 +8,14 @@ type NavLink = {
 
 const LINKS: NavLink[] = [
     { to: '/home', label: 'Home' },
-    { to: '/my-items', label: 'My Items' },
-    { to: '/lists', label: 'Lists' },
     { to: '/messages', label: 'Messages' },
     { to: '/profile', label: 'Profile' },
-    { to: '/listings/new', label: '+ Add Item', className: 'nav-btn-add' }
+	{ to: '/hoos-reuse', label: 'HoosReUse' },
+    { to: '/listings/new', label: '+ New Item', className: 'nav-btn-add' }
 ];
 
 export function TopNav() {
     const location = useLocation();
-    const { setUser } = useAuth();
-
-    async function handleLogout() {
-        await logout();
-        setUser(null);
-    }
 
     return (
         <header className="top-nav" aria-label="Top navigation">
@@ -40,15 +31,12 @@ export function TopNav() {
                             <Link
                                 key={link.to}
                                 to={link.to}
-                                className={`button nav-link ${extra} ${isActive ? 'nav-link-active' : ''}`}
+                                className={`nav-link ${extra} ${isActive && !extra ? 'nav-link-active' : ''} ${isActive && extra ? 'nav-link-active' : ''}`}
                             >
                                 {link.label}
                             </Link>
                         );
                     })}
-                    <button className="button nav-btn-logout" type="button" onClick={handleLogout}>
-                        Log Out
-                    </button>
                 </nav>
             </div>
         </header>
