@@ -17,6 +17,7 @@ type MessageResponse = {
     conversationId: string;
     senderId: string;
     senderEmail: string;
+    senderName: string | null;
     senderInitial: string;
     content: string;
     createdAt: string;
@@ -56,12 +57,15 @@ const sendMessageSchema = z.object({
 });
 
 function toMessageResponse(record: MessageWithSenderRecord): MessageResponse {
+    const senderName = record.sender_display_name ?? null;
+    const displayForInitial = senderName ?? record.sender_email;
     return {
         id: record.id,
         conversationId: record.conversation_id,
         senderId: record.sender_id,
         senderEmail: record.sender_email,
-        senderInitial: record.sender_email.charAt(0).toUpperCase(),
+        senderName,
+        senderInitial: displayForInitial.charAt(0).toUpperCase(),
         content: record.content,
         createdAt: record.created_at
     };

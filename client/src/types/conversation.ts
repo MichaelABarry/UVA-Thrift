@@ -3,6 +3,7 @@ export type Message = {
     conversationId: string;
     senderId: string;
     senderEmail: string;
+    senderName: string | null;
     senderInitial: string;
     content: string;
     createdAt: string;

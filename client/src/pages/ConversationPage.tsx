@@ -367,7 +367,9 @@ export function ConversationPage() {
                                                 ) : null}
                                                 <div className="conv-message-body">
                                                     {!isOwn ? (
-                                                        <span className="conv-sender">{msg.senderEmail}</span>
+                                                        <span className="conv-sender">
+                                                            {msg.senderName ?? msg.senderEmail}
+                                                        </span>
                                                     ) : null}
                                                     {/* MessageBubble auto-detects MEETUP: messages and renders a map */}
                                                     <MessageBubble msg={msg} isOwn={isOwn} />

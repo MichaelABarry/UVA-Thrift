@@ -19,6 +19,7 @@ export type MessageRecord = {
 
 export type MessageWithSenderRecord = MessageRecord & {
     sender_email: string;
+    sender_display_name: string | null;
 };
 
 export type ConversationSummaryRecord = ConversationRecord & {
@@ -89,7 +90,7 @@ export async function findConversationsByUserId(userId: string) {
 
 export async function findMessagesByConversationId(conversationId: string) {
     const result = await pool.query<MessageWithSenderRecord>(
-        `SELECT ms.*, u.email AS sender_email
+        `SELECT ms.*, u.email AS sender_email, u.display_name AS sender_display_name
         FROM messages ms
         JOIN users u ON u.id = ms.sender_id
         WHERE ms.conversation_id = $1
@@ -114,7 +115,7 @@ export async function createMessage(
         _update AS (
             UPDATE conversations SET updated_at = NOW() WHERE id = $1
         )
-        SELECT i.*, u.email AS sender_email
+        SELECT i.*, u.email AS sender_email, u.display_name AS sender_display_name
         FROM inserted i
         JOIN users u ON u.id = i.sender_id`,
         [conversationId, senderId, content]
