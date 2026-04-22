@@ -3,64 +3,58 @@ import { HttpError } from '../utils/httpError';
 import {
     createListingForUser,
     deleteListingForUser,
-    getAllListings,
+    getAllListingsForUser,
     getListingById,
     getListingForUser,
     getListingsForUser,
+    reportListingForUser,
     updateListingForUser
 } from '../services/listingService';
 
-export async function createListing(req: Request, res: Response) {
+function getUserId(req: Request) {
     if (!req.user?.id) {
         throw new HttpError('Unauthorized.', 401);
     }
 
-    const listing = await createListingForUser(req.user.id, req.body, req.file);
+    return req.user.id;
+}
+
+export async function createListing(req: Request, res: Response) {
+    const listing = await createListingForUser(getUserId(req), req.body, req.file);
     return res.status(201).json({ listing });
 }
 
-export async function listListings(_req: Request, res: Response) {
-    const listings = await getAllListings();
+export async function listListings(req: Request, res: Response) {
+    const listings = await getAllListingsForUser(getUserId(req));
     return res.status(200).json({ listings });
 }
 
 export async function getListingDetails(req: Request, res: Response) {
-    const listing = await getListingById(req.params.listingId);
+    const listing = await getListingById(req.params.listingId, getUserId(req));
     return res.status(200).json({ listing });
 }
 
 export async function listMyListings(req: Request, res: Response) {
-    if (!req.user?.id) {
-        throw new HttpError('Unauthorized.', 401);
-    }
-
-    const listings = await getListingsForUser(req.user.id);
+    const listings = await getListingsForUser(getUserId(req));
     return res.status(200).json({ listings });
 }
 
 export async function getMyListing(req: Request, res: Response) {
-    if (!req.user?.id) {
-        throw new HttpError('Unauthorized.', 401);
-    }
-
-    const listing = await getListingForUser(req.user.id, req.params.listingId);
+    const listing = await getListingForUser(getUserId(req), req.params.listingId);
     return res.status(200).json({ listing });
 }
 
 export async function updateMyListing(req: Request, res: Response) {
-    if (!req.user?.id) {
-        throw new HttpError('Unauthorized.', 401);
-    }
-
-    const listing = await updateListingForUser(req.user.id, req.params.listingId, req.body, req.file);
+    const listing = await updateListingForUser(getUserId(req), req.params.listingId, req.body, req.file);
     return res.status(200).json({ listing });
 }
 
 export async function deleteMyListing(req: Request, res: Response) {
-    if (!req.user?.id) {
-        throw new HttpError('Unauthorized.', 401);
-    }
-
-    await deleteListingForUser(req.user.id, req.params.listingId);
+    await deleteListingForUser(getUserId(req), req.params.listingId);
     return res.status(204).send();
+}
+
+export async function toggleListingReport(req: Request, res: Response) {
+    const status = await reportListingForUser(getUserId(req), req.params.listingId);
+    return res.status(200).json(status);
 }

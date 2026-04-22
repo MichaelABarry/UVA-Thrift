@@ -8,6 +8,7 @@ export type Listing = {
     condition: string;
     imageUrl: string | null;
     createdAt: string;
+    isReported: boolean;
 };
 
 export type CreateListingPayload = {

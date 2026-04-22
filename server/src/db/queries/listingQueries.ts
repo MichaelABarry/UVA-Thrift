@@ -12,6 +12,7 @@ export type ListingRecord = {
     image_key: string | null;
     created_at: string;
     updated_at: string;
+    is_reported?: boolean;
 };
 
 export async function createListing(input: {
@@ -34,20 +35,36 @@ export async function createListing(input: {
     return result.rows[0];
 }
 
-export async function findAllListings() {
+export async function findAllListings(userId: string) {
     const result = await pool.query<ListingRecord>(
-        `SELECT * FROM listings
-        ORDER BY created_at DESC`
+        `SELECT l.*, FALSE AS is_reported
+        FROM listings l
+        LEFT JOIN listing_reports r ON r.listing_id = l.id AND r.user_id = $1
+        WHERE r.user_id IS NULL
+        ORDER BY l.created_at DESC`,
+        [userId]
     );
 
     return result.rows;
 }
 
-export async function findListingById(listingId: string) {
+export async function findListingById(listingId: string, userId?: string) {
+    if (!userId) {
+        const result = await pool.query<ListingRecord>(
+            `SELECT * FROM listings
+            WHERE id = $1`,
+            [listingId]
+        );
+
+        return result.rows[0] ?? null;
+    }
+
     const result = await pool.query<ListingRecord>(
-        `SELECT * FROM listings
-        WHERE id = $1`,
-        [listingId]
+        `SELECT l.*, COALESCE(r.user_id IS NOT NULL, FALSE) AS is_reported
+        FROM listings l
+        LEFT JOIN listing_reports r ON r.listing_id = l.id AND r.user_id = $2
+        WHERE l.id = $1`,
+        [listingId, userId]
     );
 
     return result.rows[0] ?? null;
