@@ -183,7 +183,6 @@ export function ConversationPage() {
     const [sendError, setSendError] = useState<string | null>(null);
     const [sharePhone, setSharePhone] = useState(false);
     const [shareVenmo, setShareVenmo] = useState(false);
-    const bottomRef = useRef<HTMLDivElement>(null);
     const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
     useEffect(() => {
@@ -206,10 +205,6 @@ export function ConversationPage() {
         }
         void load();
     }, [conversationId, user?.isEmailVerified]);
-
-    useEffect(() => {
-        bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
-    }, [messages]);
 
     const pollMessages = useCallback(async () => {
         if (!conversationId) return;
@@ -381,7 +376,7 @@ export function ConversationPage() {
                                             </div>
                                         );
                                     })}
-                                    <div ref={bottomRef} />
+
                                 </div>
 
                                 {sendError ? <p className="status status-error">{sendError}</p> : null}
