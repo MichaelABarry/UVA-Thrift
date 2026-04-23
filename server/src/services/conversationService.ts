@@ -4,13 +4,16 @@ import {
     findConversationById,
     findConversationsByUserId,
     findMessagesByConversationId,
+    countMessagesFromSender,
     createMessage,
     type ConversationRecord,
     type ConversationSummaryRecord,
     type MessageWithSenderRecord
 } from '../db/queries/conversationQueries';
 import { findListingById, findListingByIdIncludingDeleted } from '../db/queries/listingQueries';
+import { findUserById } from '../db/queries/userQueries';
 import { HttpError } from '../utils/httpError';
+import { sendNewMessageNotificationEmail } from './emailService';
 
 type MessageResponse = {
     id: string;
@@ -200,6 +203,24 @@ export async function sendMessageToConversation(
         throw new HttpError('This listing has been removed. This conversation is closed.', 409);
     }
 
+    const senderMessageCount = await countMessagesFromSender(conversationId, userId);
     const message = await createMessage(conversationId, userId, parsed.content);
+
+    if (senderMessageCount === 0) {
+        const recipientId = userId === conversation.buyer_id
+            ? conversation.seller_id
+            : conversation.buyer_id;
+        const recipient = await findUserById(recipientId);
+        if (recipient) {
+            const senderName = message.sender_display_name ?? message.sender_email;
+            void sendNewMessageNotificationEmail(
+                recipient.email,
+                senderName,
+                listing.name,
+                conversationId
+            );
+        }
+    }
+
     return toMessageResponse(message);
 }

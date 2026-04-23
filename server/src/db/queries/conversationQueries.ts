@@ -103,6 +103,17 @@ export async function findMessagesByConversationId(conversationId: string) {
     return result.rows;
 }
 
+export async function countMessagesFromSender(
+    conversationId: string,
+    senderId: string
+): Promise<number> {
+    const result = await pool.query<{ count: string }>(
+        'SELECT COUNT(*) AS count FROM messages WHERE conversation_id = $1 AND sender_id = $2',
+        [conversationId, senderId]
+    );
+    return parseInt(result.rows[0].count, 10);
+}
+
 export async function createMessage(
     conversationId: string,
     senderId: string,
