@@ -63,6 +63,31 @@ function getLatestContactShare(messages: Message[], senderId: string | null | un
     return null;
 }
 
+function formatPossessiveName(name: string): string {
+    return name.endsWith('s') ? `${name}'` : `${name}'s`;
+}
+
+function getOtherPartyFirstName(messages: Message[], senderId: string | null | undefined): string | null {
+    if (!senderId) return null;
+
+    for (let index = messages.length - 1; index >= 0; index -= 1) {
+        const message = messages[index];
+        if (message.senderId !== senderId) continue;
+
+        const senderName = message.senderName?.trim();
+        if (senderName) {
+            return senderName.split(/\s+/)[0];
+        }
+
+        const emailName = message.senderEmail.split('@')[0]?.trim();
+        if (emailName) {
+            return emailName.charAt(0).toUpperCase() + emailName.slice(1);
+        }
+    }
+
+    return null;
+}
+
 // Renders a chat bubble — either a regular text bubble or an embedded map bubble.
 function MessageBubble({ msg, isOwn }: { msg: Message; isOwn: boolean }) {
     const [isMapOpen, setIsMapOpen] = useState(false);
@@ -223,6 +248,13 @@ export function ConversationPage() {
         () => getLatestContactShare(messages, otherPartyId),
         [messages, otherPartyId]
     );
+    const otherPartyFirstName = useMemo(
+        () => getOtherPartyFirstName(messages, otherPartyId),
+        [messages, otherPartyId]
+    );
+    const sharedWithYouTitle = otherPartyFirstName
+        ? `${formatPossessiveName(otherPartyFirstName)} Contact Info`
+        : 'Shared With You';
     const currentMeetupLocation = useMemo(
         () => currentMeetup
             ? {
@@ -539,7 +571,7 @@ export function ConversationPage() {
                                     </div>
 
                                     <div className="conv-share-section">
-                                        <p className="conv-share-section-title">Shared With You</p>
+                                        <p className="conv-share-section-title">{sharedWithYouTitle}</p>
                                         <div className="conv-share-card-grid">
                                             <div className="conv-share-card-item">
                                                 <span className="conv-share-card-label">Phone</span>

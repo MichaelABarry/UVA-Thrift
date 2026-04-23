@@ -3341,3 +3341,300 @@ textarea.cl-input {
   padding: 1rem 1.25rem;
   color: var(--text-secondary);
 }
+
+/* Hoos ReUse Nav Link*/
+
+/*Hoos ReUse Page */
+
+.hoos-reuse-shell {
+    max-width: 780px;
+    display: flex;
+    flex-direction: column;
+    gap: 2.5rem;
+    padding-bottom: 3rem;
+}
+
+/* Hero */
+.hoos-reuse-hero {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1.5rem;
+    background: var(--navy);
+    border-radius: var(--radius-lg);
+    padding: 2.25rem 2rem;
+}
+
+.hoos-reuse-hero-text {
+    flex: 1;
+}
+
+.hoos-reuse-eyebrow {
+    margin: 0 0 0.4rem;
+    font-size: 0.78rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.07em;
+    color: var(--orange);
+}
+
+.hoos-reuse-title {
+    margin: 0 0 0.6rem;
+    font-size: 2.4rem;
+    font-weight: 800;
+    color: #fff;
+    line-height: 1.1;
+}
+
+.hoos-reuse-tagline {
+    margin: 0;
+    font-size: 1rem;
+    color: rgba(255, 255, 255, 0.78);
+    line-height: 1.55;
+}
+
+.hoos-reuse-hero-badge {
+    font-size: 4rem;
+    flex-shrink: 0;
+    line-height: 1;
+}
+
+/* Sections */
+.hoos-reuse-section {
+    display: flex;
+    flex-direction: column;
+    gap: 0.85rem;
+}
+
+.hoos-reuse-section-title {
+    margin: 0;
+    font-size: 1.3rem;
+    font-weight: 700;
+    color: var(--navy);
+}
+
+.hoos-reuse-body {
+    margin: 0;
+    font-size: 0.97rem;
+    color: var(--text-secondary);
+    line-height: 1.7;
+}
+
+/* Stats grid */
+.hoos-reuse-stats {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 1rem;
+}
+
+.hoos-reuse-stat-card {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.6rem;
+    padding: 1.25rem 1rem;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow-sm);
+    text-align: center;
+}
+
+.hoos-reuse-stat-icon {
+    font-size: 2rem;
+    line-height: 1;
+}
+
+.hoos-reuse-stat-label {
+    margin: 0;
+    font-size: 0.85rem;
+    font-weight: 500;
+    color: var(--text-secondary);
+    line-height: 1.4;
+}
+
+/* Steps list */
+.hoos-reuse-steps {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.hoos-reuse-step {
+    display: flex;
+    gap: 1rem;
+    align-items: flex-start;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 1.1rem 1.2rem;
+}
+
+.hoos-reuse-step-num {
+    flex-shrink: 0;
+    width: 2rem;
+    height: 2rem;
+    border-radius: 50%;
+    background: var(--navy);
+    color: #fff;
+    font-weight: 700;
+    font-size: 0.9rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.hoos-reuse-step strong {
+    display: block;
+    margin-bottom: 0.25rem;
+    color: var(--text);
+    font-size: 0.97rem;
+}
+
+.hoos-reuse-step p {
+    margin: 0;
+    font-size: 0.88rem;
+    color: var(--text-secondary);
+    line-height: 1.55;
+}
+
+/* Callout box (UVA Thrift connection) */
+.hoos-reuse-callout {
+    display: flex;
+    gap: 1.1rem;
+    align-items: flex-start;
+    background: var(--orange-soft);
+    border: 1px solid rgba(229, 114, 0, 0.25);
+    border-radius: var(--radius-lg);
+    padding: 1.5rem;
+}
+
+.hoos-reuse-callout-content {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+.hoos-reuse-callout-icon {
+    font-size: 1.8rem;
+    flex-shrink: 0;
+    line-height: 1;
+}
+
+.hoos-reuse-callout-title {
+    margin: 0 0 0.4rem;
+    font-size: 1.05rem;
+    font-weight: 700;
+    color: var(--navy);
+}
+
+.hoos-reuse-callout-body {
+    margin: 0 0 1rem;
+    font-size: 0.92rem;
+    color: var(--text-secondary);
+    line-height: 1.6;
+}
+
+.hoos-reuse-callout-link {
+    font-size: 0.88rem;
+}
+
+/* Interested / CTA section */
+.hoos-reuse-interested {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    padding: 1.75rem;
+    box-shadow: var(--shadow-sm);
+}
+
+.hoos-reuse-cta {
+    align-self: flex-start;
+    margin-top: 0.5rem;
+    font-size: 0.95rem;
+    padding: 0.75rem 1.4rem;
+}
+
+/* Responsive */
+@media (max-width: 600px) {
+    .hoos-reuse-hero {
+        flex-direction: column;
+        text-align: center;
+    }
+
+    .hoos-reuse-hero-badge {
+        font-size: 3rem;
+    }
+
+    .hoos-reuse-title {
+        font-size: 1.9rem;
+    }
+
+    .cl-expiry-options {
+        gap: 0.5rem;
+    }
+
+    .expiry-banner {
+        flex-direction: column;
+        align-items: stretch;
+    }
+}
+
+/* Hoos ReUse Donate Grid */
+.hoos-reuse-donate-note {
+    margin: 0;
+    font-size: 0.9rem;
+    color: var(--text-secondary);
+}
+
+.hoos-reuse-donate-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+}
+
+.hoos-reuse-donate-card {
+    border-radius: var(--radius);
+    padding: 1.25rem;
+    border: 1px solid var(--border);
+}
+
+.hoos-reuse-donate-card--yes {
+    background: #f0fdf4;
+    border-color: #bbf7d0;
+}
+
+.hoos-reuse-donate-card--no {
+    background: #fef2f2;
+    border-color: #fecaca;
+}
+
+.hoos-reuse-donate-card-title {
+    margin: 0 0 0.75rem;
+    font-size: 0.92rem;
+    font-weight: 700;
+    color: var(--text);
+}
+
+.hoos-reuse-donate-list {
+    margin: 0;
+    padding-left: 1.2rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+}
+
+.hoos-reuse-donate-list li {
+    font-size: 0.88rem;
+    color: var(--text-secondary);
+    line-height: 1.4;
+}
+
+@media (max-width: 600px) {
+    .hoos-reuse-donate-grid {
+        grid-template-columns: 1fr;
+    }
+}
