@@ -184,6 +184,7 @@ export function ConversationPage() {
     const [sharePhone, setSharePhone] = useState(false);
     const [shareVenmo, setShareVenmo] = useState(false);
     const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+    const conversationClosed = Boolean(conversation?.isClosed);
 
     useEffect(() => {
         async function load() {
@@ -210,6 +211,7 @@ export function ConversationPage() {
         if (!conversationId) return;
         try {
             const response = await getConversation(conversationId);
+            setConversation(response.conversation);
             setMessages(response.conversation.messages);
         } catch {
             // Silently ignore poll failures
@@ -223,7 +225,7 @@ export function ConversationPage() {
     }, [conversationId, user?.isEmailVerified, pollMessages]);
 
     async function handleShareContact() {
-        if (!conversationId) return;
+        if (!conversationId || conversationClosed) return;
         const lines: string[] = ['Here is my contact/payment info:'];
         if (sharePhone && user?.phoneNumber) lines.push(`Phone: ${user.phoneNumber}`);
         if (shareVenmo && user?.venmoUsername) lines.push(`Venmo: @${user.venmoUsername}`);
@@ -244,7 +246,7 @@ export function ConversationPage() {
 
     async function handleSend(e: React.FormEvent) {
         e.preventDefault();
-        if (!conversationId || !messageText.trim()) return;
+        if (!conversationId || !messageText.trim() || conversationClosed) return;
         setSending(true);
         setSendError(null);
         try {
@@ -263,7 +265,7 @@ export function ConversationPage() {
     // 2. A plain text message with the full address so it can be copied into Maps/GPS
 
     async function handleLocationConfirmed(encodedMessage: string) {
-        if (!conversationId) return;
+        if (!conversationId || conversationClosed) return;
         setSending(true);
         setSendError(null);
         try {
@@ -330,7 +332,7 @@ export function ConversationPage() {
                                             ${conversation.listingPrice.toFixed(2)}
                                         </span>
                                     </div>
-                                    {conversation.listingId ? (
+                                    {!conversation.isClosed && conversation.listingId ? (
                                         <Link
                                             className="button button-secondary"
                                             to={`/listings/${conversation.listingId}`}
@@ -338,9 +340,16 @@ export function ConversationPage() {
                                             View Listing
                                         </Link>
                                     ) : (
-                                        <span className="conv-listing-deleted">Listing deleted</span>
+                                        <span className="conv-listing-deleted">Listing removed</span>
                                     )}
                                 </div>
+
+                                {conversation.isClosed ? (
+                                    <div className="conv-closed-banner" role="status" aria-live="polite">
+                                        This item has been removed from the marketplace. The conversation is now closed,
+                                        so no new messages can be sent.
+                                    </div>
+                                ) : null}
 
                                 <div
                                     className="conv-messages"
@@ -389,14 +398,14 @@ export function ConversationPage() {
                                         type="text"
                                         value={messageText}
                                         onChange={(e) => setMessageText(e.target.value)}
-                                        placeholder="Type a message..."
-                                        disabled={sending}
+                                        placeholder={conversationClosed ? 'This conversation has ended.' : 'Type a message...'}
+                                        disabled={sending || conversationClosed}
                                         maxLength={2000}
                                     />
                                     <button
                                         className="button button-accent"
                                         type="submit"
-                                        disabled={sending || !messageText.trim()}
+                                        disabled={sending || conversationClosed || !messageText.trim()}
                                     >
                                         {sending ? 'Sending...' : 'Send'}
                                     </button>
@@ -411,7 +420,7 @@ export function ConversationPage() {
                                             type="checkbox"
                                             checked={sharePhone}
                                             onChange={(e) => setSharePhone(e.target.checked)}
-                                            disabled={!user?.phoneNumber || sending}
+                                            disabled={!user?.phoneNumber || sending || conversationClosed}
                                         />
                                         Phone Number
                                         {!user?.phoneNumber ? (
@@ -423,7 +432,7 @@ export function ConversationPage() {
                                             type="checkbox"
                                             checked={shareVenmo}
                                             onChange={(e) => setShareVenmo(e.target.checked)}
-                                            disabled={!user?.venmoUsername || sending}
+                                            disabled={!user?.venmoUsername || sending || conversationClosed}
                                         />
                                         Venmo Username
                                         {!user?.venmoUsername ? (
@@ -433,15 +442,21 @@ export function ConversationPage() {
                                     <button
                                         className="button button-accent"
                                         type="button"
-                                        disabled={(!sharePhone && !shareVenmo) || sending}
+                                        disabled={conversationClosed || (!sharePhone && !shareVenmo) || sending}
                                         onClick={() => { void handleShareContact(); }}
                                     >
-                                        Share Contact/Payment Information
+                                        {conversationClosed ? 'Conversation Ended' : 'Share Contact/Payment Information'}
                                     </button>
                                 </div>
 
-                                 <div className="conv-meetup-panel">
-                                    <MeetupAreaPicker onLocationConfirmed={handleLocationConfirmed} />
+                                 <div className={`conv-meetup-panel${conversationClosed ? ' conv-meetup-panel-disabled' : ''}`}>
+                                    {conversationClosed ? (
+                                        <p className="conv-meetup-closed-message">
+                                            Meetup suggestions are disabled because this listing has been removed.
+                                        </p>
+                                    ) : (
+                                        <MeetupAreaPicker onLocationConfirmed={handleLocationConfirmed} />
+                                    )}
                                 </div>
                             </div>
                         </div>

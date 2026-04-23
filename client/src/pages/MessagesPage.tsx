@@ -94,7 +94,12 @@ export function MessagesPage() {
                                 </div>
                                 <div className="messages-row-body">
                                     <div className="messages-row-header">
-                                        <span className="messages-row-listing">{conv.listingName}</span>
+                                        <span className="messages-row-listing">
+                                            {conv.listingName}
+                                            {conv.isClosed ? (
+                                                <span className="messages-row-status">Conversation ended</span>
+                                            ) : null}
+                                        </span>
                                         <span className="messages-row-time">
                                             {formatDate(conv.lastMessageAt ?? conv.updatedAt)}
                                         </span>

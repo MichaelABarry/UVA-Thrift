@@ -39,6 +39,7 @@ export async function createListingReport(userId: string, listingId: string) {
         const listingResult = await client.query<ListingRecord>(
             `SELECT * FROM listings
             WHERE id = $1
+              AND deleted_at IS NULL
             FOR UPDATE`,
             [listingId]
         );
@@ -87,8 +88,11 @@ export async function createListingReport(userId: string, listingId: string) {
         }
 
         const deletedListingResult = await client.query<ListingRecord>(
-            `DELETE FROM listings
+            `UPDATE listings
+            SET deleted_at = NOW(),
+                updated_at = NOW()
             WHERE id = $1
+              AND deleted_at IS NULL
             RETURNING *`,
             [listingId]
         );

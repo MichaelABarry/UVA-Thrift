@@ -15,6 +15,7 @@ export type Conversation = {
     listingName: string;
     listingImageUrl: string | null;
     listingPrice: number;
+    isClosed: boolean;
     buyerId: string;
     sellerId: string;
     createdAt: string;
@@ -28,6 +29,7 @@ export type ConversationSummary = {
     listingName: string;
     listingImageUrl: string | null;
     listingPrice: number;
+    isClosed: boolean;
     otherPartyEmail: string;
     lastMessagePreview: string | null;
     lastMessageAt: string | null;

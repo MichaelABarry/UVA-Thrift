@@ -9,7 +9,7 @@ import {
     type ConversationSummaryRecord,
     type MessageWithSenderRecord
 } from '../db/queries/conversationQueries';
-import { findListingById } from '../db/queries/listingQueries';
+import { findListingById, findListingByIdIncludingDeleted } from '../db/queries/listingQueries';
 import { HttpError } from '../utils/httpError';
 
 type MessageResponse = {
@@ -29,6 +29,7 @@ type ConversationResponse = {
     listingName: string;
     listingImageUrl: string | null;
     listingPrice: number;
+    isClosed: boolean;
     buyerId: string;
     sellerId: string;
     createdAt: string;
@@ -42,6 +43,7 @@ type ConversationSummaryResponse = {
     listingName: string;
     listingImageUrl: string | null;
     listingPrice: number;
+    isClosed: boolean;
     otherPartyEmail: string;
     lastMessagePreview: string | null;
     lastMessageAt: string | null;
@@ -76,6 +78,7 @@ function toConversationResponse(
     listingName: string,
     listingImageUrl: string | null,
     listingPriceCents: number,
+    isClosed: boolean,
     messages: MessageWithSenderRecord[]
 ): ConversationResponse {
     return {
@@ -84,6 +87,7 @@ function toConversationResponse(
         listingName,
         listingImageUrl,
         listingPrice: listingPriceCents / 100,
+        isClosed,
         buyerId: conv.buyer_id,
         sellerId: conv.seller_id,
         createdAt: conv.created_at,
@@ -99,6 +103,7 @@ function toConversationSummaryResponse(record: ConversationSummaryRecord): Conve
         listingName: record.listing_name ?? 'Deleted listing',
         listingImageUrl: record.listing_image_url,
         listingPrice: (record.listing_price_cents ?? 0) / 100,
+        isClosed: !record.listing_id || Boolean(record.listing_deleted_at) || !record.listing_name,
         otherPartyEmail: record.other_party_email,
         lastMessagePreview: record.last_message_content
             ? record.last_message_content.slice(0, 80)
@@ -131,6 +136,7 @@ export async function getOrCreateConversation(
         listing.name,
         listing.image_url,
         listing.price_cents,
+        false,
         messages
     );
 }
@@ -150,15 +156,17 @@ export async function getConversationForUser(
     }
 
     const listing = conversation.listing_id
-        ? await findListingById(conversation.listing_id)
+        ? await findListingByIdIncludingDeleted(conversation.listing_id)
         : null;
     const messages = await findMessagesByConversationId(conversationId);
+    const isClosed = !conversation.listing_id || !listing || Boolean(listing.deleted_at);
 
     return toConversationResponse(
         conversation,
         listing?.name ?? 'Deleted listing',
         listing?.image_url ?? null,
         listing?.price_cents ?? 0,
+        isClosed,
         messages
     );
 }
@@ -182,6 +190,14 @@ export async function sendMessageToConversation(
 
     if (conversation.buyer_id !== userId && conversation.seller_id !== userId) {
         throw new HttpError('Forbidden.', 403);
+    }
+
+    const listing = conversation.listing_id
+        ? await findListingByIdIncludingDeleted(conversation.listing_id)
+        : null;
+
+    if (!conversation.listing_id || !listing || listing.deleted_at) {
+        throw new HttpError('This listing has been removed. This conversation is closed.', 409);
     }
 
     const message = await createMessage(conversationId, userId, parsed.content);

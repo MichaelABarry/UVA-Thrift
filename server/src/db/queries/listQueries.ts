@@ -106,6 +106,7 @@ export async function findListItemsByUserId(userId: string) {
         JOIN list_items li ON li.list_id = l.id
         JOIN listings ls ON ls.id = li.listing_id
         WHERE l.user_id = $1
+                    AND ls.deleted_at IS NULL
         ORDER BY li.created_at DESC`,
         [userId]
     );
@@ -130,6 +131,7 @@ export async function findListItemsByListIdForUser(listId: string, userId: strin
         JOIN list_items li ON li.list_id = l.id
         JOIN listings ls ON ls.id = li.listing_id
         WHERE l.id = $1 AND l.user_id = $2
+                    AND ls.deleted_at IS NULL
         ORDER BY li.created_at DESC`,
         [listId, userId]
     );

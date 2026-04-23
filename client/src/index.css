@@ -1340,6 +1340,17 @@ a.button:hover {
   flex-shrink: 0;
 }
 
+.conv-closed-banner {
+  margin-bottom: 0.85rem;
+  padding: 0.85rem 1rem;
+  border: 1px solid rgba(229, 114, 0, 0.28);
+  border-radius: var(--radius);
+  background: rgba(229, 114, 0, 0.1);
+  color: #8a4b00;
+  font-size: 0.9rem;
+  line-height: 1.45;
+}
+
 .conv-send-input { flex: 1; }
 
 .conv-body {
@@ -1397,6 +1408,19 @@ a.button:hover {
   font-size: 0.68rem;
   color: rgba(255,255,255,0.5);
   font-style: italic;
+}
+
+.messages-row-status {
+  display: inline-flex;
+  margin-left: 0.6rem;
+  padding: 0.12rem 0.45rem;
+  border-radius: 999px;
+  background: rgba(229, 114, 0, 0.14);
+  color: #8a4b00;
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  vertical-align: middle;
 }
 
 /* ─── Setup Profile / Contact Info ─── */
@@ -2675,6 +2699,17 @@ textarea.cl-input {
   padding: 1.35rem 1.25rem;
   box-shadow: var(--shadow-md);
   width: 100%;
+}
+
+.conv-meetup-panel-disabled {
+  opacity: 0.72;
+}
+
+.conv-meetup-closed-message {
+  margin: 0;
+  color: rgba(255, 255, 255, 0.84);
+  font-size: 0.92rem;
+  line-height: 1.5;
 }
 
 .conv-share-panel,
