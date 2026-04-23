@@ -10,6 +10,7 @@ const LINKS: NavLink[] = [
     { to: '/home', label: 'Home' },
     { to: '/messages', label: 'Messages' },
     { to: '/profile', label: 'Profile' },
+    { to: '/hoos-reuse', label: 'HoosReUse' },
     { to: '/listings/new', label: '+ New Item', className: 'nav-btn-add' }
 ];
 
