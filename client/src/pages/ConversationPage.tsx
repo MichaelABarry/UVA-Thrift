@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link, Navigate, useParams } from 'react-router-dom';
 import { Circle, MapContainer, Marker, TileLayer } from 'react-leaflet';
 import L from 'leaflet';
@@ -11,6 +11,7 @@ import { MeetupAreaPicker } from '../components/MeetupAreaPicker';
 const POLL_INTERVAL_MS = 5000;
 
 const MEETUP_RADIUS_METERS = 100;
+const MEETUP_AREA_COLOR = '#5f7494';
 const meetupPinIcon = L.icon({
     iconRetinaUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png',
     iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
@@ -38,6 +39,17 @@ function parseMeetupMessage(content: string): MeetupData | null {
     } catch {
         return null;
     }
+}
+
+function getLatestMeetup(messages: Message[]): MeetupData | null {
+    for (let index = messages.length - 1; index >= 0; index -= 1) {
+        const meetup = parseMeetupMessage(messages[index].content);
+        if (meetup) {
+            return meetup;
+        }
+    }
+
+    return null;
 }
 
 // Renders a chat bubble — either a regular text bubble or an embedded map bubble.
@@ -145,9 +157,9 @@ function MessageBubble({ msg, isOwn }: { msg: Message; isOwn: boolean }) {
                                         center={[meetup.lat, meetup.lng]}
                                         radius={MEETUP_RADIUS_METERS}
                                         pathOptions={{
-                                            color: '#E57200',
-                                            fillColor: '#E57200',
-                                            fillOpacity: 0.18,
+                                            color: MEETUP_AREA_COLOR,
+                                            fillColor: MEETUP_AREA_COLOR,
+                                            fillOpacity: 0.14,
                                             weight: 2
                                         }}
                                     />
@@ -159,7 +171,7 @@ function MessageBubble({ msg, isOwn }: { msg: Message; isOwn: boolean }) {
                             </div>
 
                             <p className="conv-meetup-modal-note">
-                                Orange circle = approximate area. Confirm exact spot in chat.
+                                Shaded circle = approximate area. Confirm the exact handoff spot in chat.
                             </p>
                         </div>
                     </div>
@@ -184,7 +196,21 @@ export function ConversationPage() {
     const [sharePhone, setSharePhone] = useState(false);
     const [shareVenmo, setShareVenmo] = useState(false);
     const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+    const messagesContainerRef = useRef<HTMLDivElement | null>(null);
+    const previousMessageCountRef = useRef(0);
     const conversationClosed = Boolean(conversation?.isClosed);
+    const currentMeetup = useMemo(() => getLatestMeetup(messages), [messages]);
+    const currentMeetupLocation = useMemo(
+        () => currentMeetup
+            ? {
+                lat: currentMeetup.lat,
+                lng: currentMeetup.lng,
+                label: currentMeetup.label,
+                address: currentMeetup.address ?? currentMeetup.label
+            }
+            : null,
+        [currentMeetup?.address, currentMeetup?.label, currentMeetup?.lat, currentMeetup?.lng]
+    );
 
     useEffect(() => {
         async function load() {
@@ -223,6 +249,19 @@ export function ConversationPage() {
         pollRef.current = setInterval(() => { void pollMessages(); }, POLL_INTERVAL_MS);
         return () => { if (pollRef.current) clearInterval(pollRef.current); };
     }, [conversationId, user?.isEmailVerified, pollMessages]);
+
+    useEffect(() => {
+        const messageContainer = messagesContainerRef.current;
+        const previousCount = previousMessageCountRef.current;
+        const hasLoadedMessages = previousCount === 0 && messages.length > 0;
+        const hasNewMessages = messages.length > previousCount;
+
+        if (messageContainer && (hasLoadedMessages || hasNewMessages)) {
+            messageContainer.scrollTop = messageContainer.scrollHeight;
+        }
+
+        previousMessageCountRef.current = messages.length;
+    }, [messages]);
 
     async function handleShareContact() {
         if (!conversationId || conversationClosed) return;
@@ -355,6 +394,7 @@ export function ConversationPage() {
                                     className="conv-messages"
                                     aria-label="Conversation messages"
                                     aria-live="polite"
+                                    ref={messagesContainerRef}
                                 >
                                     {messages.length === 0 ? (
                                         <p className="conv-no-messages">No messages yet. Say hello!</p>
@@ -455,7 +495,10 @@ export function ConversationPage() {
                                             Meetup suggestions are disabled because this listing has been removed.
                                         </p>
                                     ) : (
-                                        <MeetupAreaPicker onLocationConfirmed={handleLocationConfirmed} />
+                                        <MeetupAreaPicker
+                                            onLocationConfirmed={handleLocationConfirmed}
+                                            currentLocation={currentMeetupLocation}
+                                        />
                                     )}
                                 </div>
                             </div>
