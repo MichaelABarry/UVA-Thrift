@@ -7,25 +7,28 @@ import {
     getMyListing,
     listListings,
     listMyListings,
+    toggleListingReport,
     updateMyListing
 } from './listingController';
 import {
     createListingForUser,
     deleteListingForUser,
-    getAllListings,
+    getAllListingsForUser,
     getListingById,
     getListingForUser,
     getListingsForUser,
+    reportListingForUser,
     updateListingForUser
 } from '../services/listingService';
 
 vi.mock('../services/listingService', () => ({
     createListingForUser: vi.fn(),
     deleteListingForUser: vi.fn(),
-    getAllListings: vi.fn(),
+    getAllListingsForUser: vi.fn(),
     getListingById: vi.fn(),
     getListingForUser: vi.fn(),
     getListingsForUser: vi.fn(),
+    reportListingForUser: vi.fn(),
     updateListingForUser: vi.fn()
 }));
 
@@ -46,19 +49,21 @@ function createResponse() {
 describe('listingController', () => {
     const mockedCreateListingForUser = vi.mocked(createListingForUser);
     const mockedDeleteListingForUser = vi.mocked(deleteListingForUser);
-    const mockedGetAllListings = vi.mocked(getAllListings);
+    const mockedGetAllListingsForUser = vi.mocked(getAllListingsForUser);
     const mockedGetListingById = vi.mocked(getListingById);
     const mockedGetListingForUser = vi.mocked(getListingForUser);
     const mockedGetListingsForUser = vi.mocked(getListingsForUser);
+    const mockedReportListingForUser = vi.mocked(reportListingForUser);
     const mockedUpdateListingForUser = vi.mocked(updateListingForUser);
 
     beforeEach(() => {
         mockedCreateListingForUser.mockReset();
         mockedDeleteListingForUser.mockReset();
-        mockedGetAllListings.mockReset();
+        mockedGetAllListingsForUser.mockReset();
         mockedGetListingById.mockReset();
         mockedGetListingForUser.mockReset();
         mockedGetListingsForUser.mockReset();
+        mockedReportListingForUser.mockReset();
         mockedUpdateListingForUser.mockReset();
     });
 
@@ -89,10 +94,11 @@ describe('listingController', () => {
         const response = createResponse();
         const listings = [{ id: 'listing-1' }];
 
-        mockedGetAllListings.mockResolvedValue(listings as never);
+        mockedGetAllListingsForUser.mockResolvedValue(listings as never);
 
-        await listListings({} as Request, response);
+        await listListings({ user: { id: 'user-1' } } as Request, response);
 
+        expect(mockedGetAllListingsForUser).toHaveBeenCalledWith('user-1');
         expect(response.status).toHaveBeenCalledWith(200);
         expect(response.json).toHaveBeenCalledWith({ listings });
     });
@@ -103,9 +109,9 @@ describe('listingController', () => {
 
         mockedGetListingById.mockResolvedValue(listing as never);
 
-        await getListingDetails({ params: { listingId: 'listing-1' } } as unknown as Request, response);
+        await getListingDetails({ user: { id: 'user-1' }, params: { listingId: 'listing-1' } } as unknown as Request, response);
 
-        expect(mockedGetListingById).toHaveBeenCalledWith('listing-1');
+        expect(mockedGetListingById).toHaveBeenCalledWith('listing-1', 'user-1');
         expect(response.status).toHaveBeenCalledWith(200);
         expect(response.json).toHaveBeenCalledWith({ listing });
     });
@@ -164,5 +170,20 @@ describe('listingController', () => {
         expect(mockedDeleteListingForUser).toHaveBeenCalledWith('user-1', 'listing-1');
         expect(response.status).toHaveBeenCalledWith(204);
         expect(response.send).toHaveBeenCalled();
+    });
+
+    it('reports a listing for the current user', async () => {
+        const response = createResponse();
+
+        mockedReportListingForUser.mockResolvedValue({ listingDeleted: false } as never);
+
+        await toggleListingReport(
+            { user: { id: 'user-1' }, params: { listingId: 'listing-1' } } as unknown as Request,
+            response
+        );
+
+        expect(mockedReportListingForUser).toHaveBeenCalledWith('user-1', 'listing-1');
+        expect(response.status).toHaveBeenCalledWith(200);
+        expect(response.json).toHaveBeenCalledWith({ listingDeleted: false });
     });
 });

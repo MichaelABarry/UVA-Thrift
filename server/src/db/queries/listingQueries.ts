@@ -12,6 +12,8 @@ export type ListingRecord = {
     image_key: string | null;
     created_at: string;
     updated_at: string;
+    deleted_at: string | null;
+    is_reported?: boolean;
 };
 
 export async function createListing(input: {
@@ -34,16 +36,45 @@ export async function createListing(input: {
     return result.rows[0];
 }
 
-export async function findAllListings() {
+export async function findAllListings(userId: string) {
     const result = await pool.query<ListingRecord>(
-        `SELECT * FROM listings
-        ORDER BY created_at DESC`
+        `SELECT l.*, FALSE AS is_reported
+        FROM listings l
+        LEFT JOIN listing_reports r ON r.listing_id = l.id AND r.user_id = $1
+        WHERE r.user_id IS NULL
+          AND l.deleted_at IS NULL
+        ORDER BY l.created_at DESC`,
+        [userId]
     );
 
     return result.rows;
 }
 
-export async function findListingById(listingId: string) {
+export async function findListingById(listingId: string, userId?: string) {
+    if (!userId) {
+        const result = await pool.query<ListingRecord>(
+            `SELECT * FROM listings
+            WHERE id = $1
+              AND deleted_at IS NULL`,
+            [listingId]
+        );
+
+        return result.rows[0] ?? null;
+    }
+
+    const result = await pool.query<ListingRecord>(
+        `SELECT l.*, COALESCE(r.user_id IS NOT NULL, FALSE) AS is_reported
+        FROM listings l
+        LEFT JOIN listing_reports r ON r.listing_id = l.id AND r.user_id = $2
+        WHERE l.id = $1
+          AND l.deleted_at IS NULL`,
+        [listingId, userId]
+    );
+
+    return result.rows[0] ?? null;
+}
+
+export async function findListingByIdIncludingDeleted(listingId: string) {
     const result = await pool.query<ListingRecord>(
         `SELECT * FROM listings
         WHERE id = $1`,
@@ -56,7 +87,8 @@ export async function findListingById(listingId: string) {
 export async function findListingByIdForUser(listingId: string, userId: string) {
     const result = await pool.query<ListingRecord>(
         `SELECT * FROM listings
-        WHERE id = $1 AND user_id = $2`,
+        WHERE id = $1 AND user_id = $2
+          AND deleted_at IS NULL`,
         [listingId, userId]
     );
 
@@ -67,6 +99,7 @@ export async function findListingsByUserId(userId: string) {
     const result = await pool.query<ListingRecord>(
         `SELECT * FROM listings
         WHERE user_id = $1
+          AND deleted_at IS NULL
         ORDER BY created_at DESC`,
         [userId]
     );
@@ -95,7 +128,8 @@ export async function updateListingById(input: {
             image_url = $8,
             image_key = $9,
             updated_at = NOW()
-        WHERE id = $1 AND user_id = $2
+                WHERE id = $1 AND user_id = $2
+                    AND deleted_at IS NULL
         RETURNING *`,
         [
             input.listingId,
@@ -115,8 +149,11 @@ export async function updateListingById(input: {
 
 export async function deleteListingById(listingId: string, userId: string) {
     const result = await pool.query<ListingRecord>(
-        `DELETE FROM listings
+        `UPDATE listings
+        SET deleted_at = NOW(),
+            updated_at = NOW()
         WHERE id = $1 AND user_id = $2
+          AND deleted_at IS NULL
         RETURNING *`,
         [listingId, userId]
     );

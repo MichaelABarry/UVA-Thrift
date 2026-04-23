@@ -3,9 +3,10 @@ import {
     createListingForUser,
     getListingById,
     deleteListingForUser,
-    getAllListings,
+    getAllListingsForUser,
     getListingForUser,
     getListingsForUser,
+    reportListingForUser,
     updateListingForUser
 } from './listingService';
 import {
@@ -17,6 +18,7 @@ import {
     findListingsByUserId,
     updateListingById
 } from '../db/queries/listingQueries';
+import { createListingReport } from '../db/queries/listingReportQueries';
 import { notifyUsersAboutNewListing } from './notificationPreferenceService';
 import { notifyWatchersAboutListingChange } from './listingWatchService';
 import { deleteListingImage, uploadListingImage } from './storageService';
@@ -29,6 +31,10 @@ vi.mock('../db/queries/listingQueries', () => ({
     findListingByIdForUser: vi.fn(),
     findListingsByUserId: vi.fn(),
     updateListingById: vi.fn()
+}));
+
+vi.mock('../db/queries/listingReportQueries', () => ({
+    createListingReport: vi.fn()
 }));
 
 vi.mock('./notificationPreferenceService', () => ({
@@ -56,6 +62,8 @@ function makeListingRecord(overrides: Partial<{
     image_key: string | null;
     created_at: string;
     updated_at: string;
+    deleted_at: string | null;
+    is_reported: boolean;
 }> = {}) {
     return {
         id: 'listing-1',
@@ -69,6 +77,8 @@ function makeListingRecord(overrides: Partial<{
         image_key: null,
         created_at: '2026-03-15T12:00:00.000Z',
         updated_at: '2026-03-15T12:00:00.000Z',
+        deleted_at: null,
+        is_reported: false,
         ...overrides
     };
 }
@@ -82,6 +92,7 @@ describe('server listingService', () => {
     const mockedFindListingsByUserId = vi.mocked(findListingsByUserId);
     const mockedNotifyUsersAboutNewListing = vi.mocked(notifyUsersAboutNewListing);
     const mockedNotifyWatchersAboutListingChange = vi.mocked(notifyWatchersAboutListingChange);
+    const mockedCreateListingReport = vi.mocked(createListingReport);
     const mockedUpdateListingById = vi.mocked(updateListingById);
     const mockedDeleteListingImage = vi.mocked(deleteListingImage);
     const mockedUploadListingImage = vi.mocked(uploadListingImage);
@@ -95,6 +106,7 @@ describe('server listingService', () => {
         mockedFindListingsByUserId.mockReset();
         mockedNotifyUsersAboutNewListing.mockReset();
         mockedNotifyWatchersAboutListingChange.mockReset();
+        mockedCreateListingReport.mockReset();
         mockedUpdateListingById.mockReset();
         mockedDeleteListingImage.mockReset();
         mockedUploadListingImage.mockReset();
@@ -143,7 +155,8 @@ describe('server listingService', () => {
             condition: 'good',
             categories: ['electronics', 'other'],
             imageUrl: 'https://bucket.s3.amazonaws.com/listings/lamp.png',
-            createdAt: '2026-03-15T12:00:00.000Z'
+            createdAt: '2026-03-15T12:00:00.000Z',
+            isReported: false
         });
         expect(result).toEqual({
             id: 'listing-1',
@@ -154,7 +167,8 @@ describe('server listingService', () => {
             condition: 'good',
             categories: ['electronics', 'other'],
             imageUrl: 'https://bucket.s3.amazonaws.com/listings/lamp.png',
-            createdAt: '2026-03-15T12:00:00.000Z'
+            createdAt: '2026-03-15T12:00:00.000Z',
+            isReported: false
         });
     });
 
@@ -164,7 +178,9 @@ describe('server listingService', () => {
             makeListingRecord({ id: 'listing-2', price_cents: 2500, categories: ['furniture'] })
         ]);
 
-        const result = await getAllListings();
+        const result = await getAllListingsForUser('user-2');
+
+        expect(mockedFindAllListings).toHaveBeenCalledWith('user-2');
 
         expect(result).toEqual([
             {
@@ -176,7 +192,8 @@ describe('server listingService', () => {
                 condition: 'good',
                 categories: ['electronics'],
                 imageUrl: null,
-                createdAt: '2026-03-15T12:00:00.000Z'
+                createdAt: '2026-03-15T12:00:00.000Z',
+                isReported: false
             },
             {
                 id: 'listing-2',
@@ -187,7 +204,8 @@ describe('server listingService', () => {
                 condition: 'good',
                 categories: ['furniture'],
                 imageUrl: null,
-                createdAt: '2026-03-15T12:00:00.000Z'
+                createdAt: '2026-03-15T12:00:00.000Z',
+                isReported: false
             }
         ]);
     });
@@ -200,17 +218,20 @@ describe('server listingService', () => {
         expect(mockedFindListingsByUserId).toHaveBeenCalledWith('user-1');
         expect(result).toHaveLength(1);
         expect(result[0]?.userId).toBe('user-1');
+        expect(result[0]?.isReported).toBe(false);
     });
 
     it('retrieves a single public listing and throws when it is missing', async () => {
         mockedFindListingById.mockResolvedValueOnce(makeListingRecord());
         mockedFindListingById.mockResolvedValueOnce(null as never);
 
-        await expect(getListingById('listing-1')).resolves.toMatchObject({
+        await expect(getListingById('listing-1', 'user-2')).resolves.toMatchObject({
             id: 'listing-1',
-            userId: 'user-1'
+            userId: 'user-1',
+            isReported: false
         });
-        await expect(getListingById('missing')).rejects.toMatchObject({
+        expect(mockedFindListingById).toHaveBeenNthCalledWith(1, 'listing-1', 'user-2');
+        await expect(getListingById('missing', 'user-2')).rejects.toMatchObject({
             message: 'Listing not found.',
             statusCode: 404
         });
@@ -222,7 +243,8 @@ describe('server listingService', () => {
 
         await expect(getListingForUser('user-1', 'listing-1')).resolves.toMatchObject({
             id: 'listing-1',
-            userId: 'user-1'
+            userId: 'user-1',
+            isReported: false
         });
         await expect(getListingForUser('user-1', 'missing')).rejects.toMatchObject({
             message: 'Listing not found.',
@@ -269,7 +291,8 @@ describe('server listingService', () => {
             condition: 'good',
             categories: ['electronics', 'other'],
             imageUrl: 'https://bucket.s3.amazonaws.com/listings/new.png',
-            createdAt: '2026-03-15T12:00:00.000Z'
+            createdAt: '2026-03-15T12:00:00.000Z',
+            isReported: false
         });
 
         expect(mockedUpdateListingById).toHaveBeenNthCalledWith(1, {
@@ -292,7 +315,8 @@ describe('server listingService', () => {
             condition: 'good',
             categories: ['electronics', 'other'],
             imageUrl: 'https://bucket.s3.amazonaws.com/listings/new.png',
-            createdAt: '2026-03-15T12:00:00.000Z'
+            createdAt: '2026-03-15T12:00:00.000Z',
+            isReported: false
         }, 'user-1');
         expect(mockedDeleteListingImage).toHaveBeenCalledWith('listings/old.png');
 
@@ -327,13 +351,71 @@ describe('server listingService', () => {
             condition: 'good',
             categories: ['electronics'],
             imageUrl: 'https://bucket.s3.amazonaws.com/listings/lamp.png',
-            createdAt: '2026-03-15T12:00:00.000Z'
+            createdAt: '2026-03-15T12:00:00.000Z',
+            isReported: false
         }, 'user-1');
         expect(mockedDeleteListingImage).toHaveBeenCalledWith('listings/lamp.png');
 
         await expect(deleteListingForUser('user-1', 'missing')).rejects.toMatchObject({
             message: 'Listing not found.',
             statusCode: 404
+        });
+    });
+
+    it('creates reports once and deletes a listing on the third strike', async () => {
+        mockedFindListingById.mockResolvedValueOnce(makeListingRecord({ user_id: 'seller-1' }));
+        mockedCreateListingReport.mockResolvedValueOnce({
+            alreadyReported: false,
+            listingDeleted: false,
+            deletedListing: null
+        });
+        mockedFindListingById.mockResolvedValueOnce(makeListingRecord({ user_id: 'seller-1' }));
+        mockedCreateListingReport.mockResolvedValueOnce({
+            alreadyReported: true,
+            listingDeleted: false,
+            deletedListing: null
+        });
+        mockedFindListingById.mockResolvedValueOnce(makeListingRecord({ user_id: 'seller-1', image_key: 'listings/lamp.png' }));
+        mockedCreateListingReport.mockResolvedValueOnce({
+            alreadyReported: false,
+            listingDeleted: true,
+            deletedListing: makeListingRecord({ user_id: 'seller-1', image_key: 'listings/lamp.png' })
+        });
+
+        await expect(reportListingForUser('user-2', 'listing-1')).resolves.toEqual({
+            listingDeleted: false
+        });
+        await expect(reportListingForUser('user-2', 'listing-1')).resolves.toEqual({
+            listingDeleted: false
+        });
+        await expect(reportListingForUser('user-3', 'listing-1')).resolves.toEqual({
+            listingDeleted: true
+        });
+
+        expect(mockedCreateListingReport).toHaveBeenNthCalledWith(1, 'user-2', 'listing-1');
+        expect(mockedCreateListingReport).toHaveBeenNthCalledWith(2, 'user-2', 'listing-1');
+        expect(mockedCreateListingReport).toHaveBeenNthCalledWith(3, 'user-3', 'listing-1');
+        expect(mockedNotifyWatchersAboutListingChange).toHaveBeenCalledWith('deleted', {
+            id: 'listing-1',
+            userId: 'seller-1',
+            name: 'Desk Lamp',
+            description: 'Dorm ready lamp',
+            price: 18.99,
+            condition: 'good',
+            categories: ['electronics'],
+            imageUrl: null,
+            createdAt: '2026-03-15T12:00:00.000Z',
+            isReported: false
+        }, 'user-3');
+        expect(mockedDeleteListingImage).toHaveBeenCalledWith('listings/lamp.png');
+    });
+
+    it('rejects attempts to report your own listing', async () => {
+        mockedFindListingById.mockResolvedValue(makeListingRecord({ user_id: 'user-1' }));
+
+        await expect(reportListingForUser('user-1', 'listing-1')).rejects.toMatchObject({
+            message: 'You cannot report your own listing.',
+            statusCode: 400
         });
     });
 });

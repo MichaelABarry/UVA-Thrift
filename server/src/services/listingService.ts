@@ -9,6 +9,7 @@ import {
     type ListingRecord,
     updateListingById
 } from '../db/queries/listingQueries';
+import { createListingReport } from '../db/queries/listingReportQueries';
 import { deleteListingImage, uploadListingImage } from './storageService';
 import { HttpError } from '../utils/httpError';
 import { notifyUsersAboutNewListing } from './notificationPreferenceService';
@@ -52,7 +53,8 @@ function toListingResponse(listing: ListingRecord) {
         categories: listing.categories,
         condition: listing.condition,
         imageUrl: listing.image_url,
-        createdAt: listing.created_at
+        createdAt: listing.created_at,
+        isReported: Boolean(listing.is_reported)
     };
 }
 
@@ -91,8 +93,8 @@ export async function createListingForUser(userId: string, input: unknown, file?
     }
 }
 
-export async function getListingById(listingId: string) {
-    const listing = await findListingById(listingId);
+export async function getListingById(listingId: string, userId: string) {
+    const listing = await findListingById(listingId, userId);
 
     if (!listing) {
         throw new HttpError('Listing not found.', 404);
@@ -101,8 +103,8 @@ export async function getListingById(listingId: string) {
     return toListingResponse(listing);
 }
 
-export async function getAllListings() {
-    const listings = await findAllListings();
+export async function getAllListingsForUser(userId: string) {
+    const listings = await findAllListings(userId);
 
     return listings.map(toListingResponse);
 }
@@ -186,4 +188,42 @@ export async function deleteListingForUser(userId: string, listingId: string) {
     }
 
     await deleteListingImage(listing.image_key);
+}
+
+export async function reportListingForUser(userId: string, listingId: string) {
+    const listing = await findListingById(listingId);
+
+    if (!listing) {
+        throw new HttpError('Listing not found.', 404);
+    }
+
+    if (listing.user_id === userId) {
+        throw new HttpError('You cannot report your own listing.', 400);
+    }
+
+    const result = await createListingReport(userId, listingId);
+
+    if (!result) {
+        throw new HttpError('Listing not found.', 404);
+    }
+
+    if (result.alreadyReported) {
+        return {
+            listingDeleted: false
+        };
+    }
+
+    if (result.listingDeleted && result.deletedListing) {
+        try {
+            await notifyWatchersAboutListingChange('deleted', toListingResponse(result.deletedListing), userId);
+        } catch (error) {
+            console.error('Unable to send watched listing delete emails after report threshold:', error);
+        }
+
+        await deleteListingImage(result.deletedListing.image_key);
+    }
+
+    return {
+        listingDeleted: result.listingDeleted
+    };
 }

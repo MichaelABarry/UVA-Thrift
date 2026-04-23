@@ -26,6 +26,7 @@ export type ConversationSummaryRecord = ConversationRecord & {
     listing_name: string | null;
     listing_image_url: string | null;
     listing_price_cents: number | null;
+    listing_deleted_at: string | null;
     other_party_email: string;
     last_message_content: string | null;
     last_message_at: string | null;
@@ -63,6 +64,7 @@ export async function findConversationsByUserId(userId: string) {
             l.name        AS listing_name,
             l.image_url   AS listing_image_url,
             l.price_cents AS listing_price_cents,
+            l.deleted_at  AS listing_deleted_at,
             CASE
                 WHEN c.buyer_id = $1 THEN u_seller.email
                 ELSE u_buyer.email
