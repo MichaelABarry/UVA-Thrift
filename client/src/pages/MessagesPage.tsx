@@ -3,6 +3,7 @@ import { Navigate, useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { getConversations } from '../services/conversationService';
 import type { ConversationSummary } from '../types/conversation';
+import { formatConversationPreview } from '../utils/conversationContent';
 
 function formatDate(iso: string): string {
     const date = new Date(iso);
@@ -106,7 +107,7 @@ export function MessagesPage() {
                                     </div>
                                     <span className="messages-row-other">{conv.otherPartyEmail}</span>
                                     <p className="messages-row-preview">
-                                        {conv.lastMessagePreview ?? 'No messages yet'}
+                                        {formatConversationPreview(conv.lastMessagePreview) ?? 'No messages yet'}
                                     </p>
                                 </div>
                             </button>

@@ -1370,15 +1370,15 @@ a.button:hover {
 .conv-share-panel {
   display: flex;
   flex-direction: column;
-  gap: 0.6rem;
-  width: 200px;
-  flex-shrink: 0;
+  gap: 0.75rem;
+  width: 100%;
   padding: 0.85rem;
   border: 1px solid var(--border);
   border-radius: var(--radius);
-  background: var(--navy);
+  background: var(--bg-card);
   align-self: flex-start;
-  color: white;
+  color: var(--text);
+  box-shadow: var(--shadow-sm);
 }
 
 .conv-share-panel-title {
@@ -1386,27 +1386,127 @@ a.button:hover {
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.05em;
-  color: rgba(255,255,255,0.7);
+  color: var(--text-secondary);
   margin: 0;
+}
+
+.conv-share-panel-header {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.conv-share-panel-subtitle {
+  margin: 0;
+  font-size: 0.84rem;
+  color: var(--text-secondary);
+  line-height: 1.4;
+}
+
+.conv-share-section {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+}
+
+.conv-share-section-title {
+  margin: 0;
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+
+.conv-share-card-grid {
+  display: grid;
+  gap: 0.45rem;
+}
+
+.conv-share-card-item {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  padding: 0.7rem 0.75rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--bg);
+}
+
+.conv-share-card-label {
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.conv-share-card-value {
+  font-size: 0.84rem;
+  color: var(--text);
+  line-height: 1.35;
+  word-break: break-word;
 }
 
 .conv-share-option {
   display: flex;
-  align-items: center;
-  gap: 0.3rem;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.55rem;
+  width: 100%;
   font-size: 0.84rem;
   cursor: pointer;
   user-select: none;
+  padding: 0.7rem 0.75rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--bg);
+  color: var(--text);
+  text-align: left;
+  transition: border-color var(--transition), background var(--transition);
+}
+
+.conv-share-option:hover:not(:disabled) {
+  background: var(--bg-alt);
+  border-color: var(--border-focus);
+}
+
+.conv-share-option-selected {
+  background: var(--bg-alt);
+  border-color: var(--border-focus);
+}
+
+.conv-share-option-copy {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  min-width: 0;
+}
+
+.conv-share-option-copy span:first-child {
+  font-weight: 600;
+}
+
+.conv-share-option-copy span:last-child {
+  color: var(--text-secondary);
+  font-size: 0.76rem;
+  line-height: 1.35;
+  word-break: break-word;
+}
+
+.conv-share-option-status {
+  flex-shrink: 0;
+  color: var(--navy);
+  font-size: 0.76rem;
+  font-weight: 600;
 }
 
 .conv-share-option-disabled {
   opacity: 0.5;
-  cursor: default;
+  cursor: not-allowed;
 }
 
 .conv-share-hint {
   font-size: 0.68rem;
-  color: rgba(255,255,255,0.5);
+  color: var(--text-muted);
   font-style: italic;
 }
 
