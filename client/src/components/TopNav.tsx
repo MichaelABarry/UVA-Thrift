@@ -20,7 +20,15 @@ export function TopNav() {
         <header className="top-nav" aria-label="Top navigation">
             <div className="top-nav-inner">
                 <Link to="/home" className="top-nav-brand">
-                    UVA&nbsp;<span className="top-nav-brand-accent">Thrift</span>
+                    <img
+                        src="/UVAThrift-favicon.jpg"
+                        alt=""
+                        aria-hidden="true"
+                        className="top-nav-brand-icon"
+                    />
+                    <span>
+                        UVA&nbsp;<span className="top-nav-brand-accent">Thrift</span>
+                    </span>
                 </Link>
                 <nav className="top-nav-links">
                     {LINKS.map((link) => {

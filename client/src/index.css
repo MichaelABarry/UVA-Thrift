@@ -306,9 +306,19 @@ a.button:hover {
   font-family: 'Source Serif 4', Georgia, serif;
   font-weight: 700;
   font-size: 1.1rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.55rem;
   color: #fff;
   letter-spacing: -0.01em;
   text-decoration: none;
+}
+
+.top-nav-brand-icon {
+  width: 1.4rem;
+  height: 1.4rem;
+  display: block;
+  flex: 0 0 auto;
 }
 
 .top-nav-brand:hover {
@@ -2041,7 +2051,7 @@ a.button:hover {
   }
 
   .top-nav-links::-webkit-scrollbar { display: none; }
-  .top-nav-brand { font-size: 1rem; white-space: nowrap; }
+  .top-nav-brand { font-size: 1rem; white-space: nowrap; gap: 0.45rem; }
 
   .nav-link {
     padding: 0.35rem 0.5rem;
