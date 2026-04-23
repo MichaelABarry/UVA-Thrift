@@ -418,6 +418,7 @@ export function HomePage() {
                                             <button
                                                 className="button listing-report-button"
                                                 type="button"
+                                                title="Report this listing — e.g. spam, counterfeit items, prohibited content, or inappropriate material"
                                                 aria-label={`Report ${listing.name}`}
                                                 onClick={(event) => {
                                                     event.stopPropagation();
