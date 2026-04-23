@@ -17,6 +17,8 @@ export function CreateListingPage() {
     const [condition, setCondition] = useState('good');
     const [categories, setCategories] = useState<string[]>([]);
     const [selectedImage, setSelectedImage] = useState<File | null>(null);
+    const [imagePreviewUrl, setImagePreviewUrl] = useState<string | null>(null);
+    const [imageScale, setImageScale] = useState(1);
     const [message, setMessage] = useState<string | null>(null);
     const [error, setError] = useState<string | null>(null);
     const [submitting, setSubmitting] = useState(false);
@@ -53,6 +55,10 @@ export function CreateListingPage() {
         void loadListing();
     }, [listingId, user?.isEmailVerified]);
 
+    useEffect(() => {
+        return () => { if (imagePreviewUrl) URL.revokeObjectURL(imagePreviewUrl); };
+    }, [imagePreviewUrl]);
+
     if (!loading && !user?.isEmailVerified) {
         return <Navigate to="/" replace />;
     }
@@ -78,22 +84,65 @@ export function CreateListingPage() {
     function handleImageChange(event: ChangeEvent<HTMLInputElement>) {
         const file = event.target.files?.[0] ?? null;
         setSelectedImage(file);
+        setImagePreviewUrl(file ? URL.createObjectURL(file) : null);
+        setImageScale(1);
+    }
+
+    function handleRemoveImage() {
+        setSelectedImage(null);
+        setImagePreviewUrl(null);
+        setImageScale(1);
+        if (fileInputRef.current) fileInputRef.current.value = '';
+    }
+
+    async function getProcessedImageFile(): Promise<File | null> {
+        if (!selectedImage || !imagePreviewUrl) return null;
+        return new Promise((resolve) => {
+            const W = 800, H = 600;
+            const canvas = document.createElement('canvas');
+            canvas.width = W; canvas.height = H;
+            const ctx = canvas.getContext('2d');
+            if (!ctx) { resolve(null); return; }
+            const img = new Image();
+            img.onload = () => {
+                const coverScale = Math.max(W / img.naturalWidth, H / img.naturalHeight);
+                const drawW = img.naturalWidth * coverScale * imageScale;
+                const drawH = img.naturalHeight * coverScale * imageScale;
+                ctx.drawImage(img, (W - drawW) / 2, (H - drawH) / 2, drawW, drawH);
+                canvas.toBlob(
+                    (blob) => resolve(blob
+                        ? new File([blob], selectedImage.name.replace(/\.[^.]+$/, '.jpg'), { type: 'image/jpeg' })
+                        : null
+                    ),
+                    'image/jpeg', 0.9
+                );
+            };
+            img.onerror = () => resolve(null);
+            img.src = imagePreviewUrl;
+        });
     }
 
     async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
         event.preventDefault();
-        setSubmitting(true);
         setMessage(null);
         setError(null);
 
+        if (categories.length === 0) {
+            setError('Please select at least one category.');
+            return;
+        }
+
+        setSubmitting(true);
+
         try {
+            const processedImage = selectedImage ? (await getProcessedImageFile() ?? selectedImage) : null;
             const payload = {
                 name: name.trim(),
                 description: description.trim(),
                 price: Number(price),
                 categories,
                 condition,
-                image: selectedImage,
+                image: processedImage,
             };
 
             if (listingId) {
@@ -215,19 +264,65 @@ export function CreateListingPage() {
 
                         {/* Image upload */}
                         <div className="cl-field">
-                            <label className="cl-label" htmlFor="cl-image">
+                            <label className="cl-label">
                                 Item image <span className="cl-optional">(optional)</span>
                             </label>
                             <input
                                 ref={fileInputRef}
                                 id="cl-image"
-                                className="cl-input"
                                 type="file"
                                 accept="image/*"
                                 onChange={handleImageChange}
                                 disabled={isDisabled}
+                                style={{ display: 'none' }}
                             />
-                            <p className="cl-upload-hint">JPG, PNG, or WebP · max 5 MB</p>
+                            <div
+                                className="cl-upload-zone"
+                                role="button"
+                                tabIndex={isDisabled ? -1 : 0}
+                                aria-label="Upload image"
+                                onClick={() => { if (!isDisabled) fileInputRef.current?.click(); }}
+                                onKeyDown={(e) => { if ((e.key === 'Enter' || e.key === ' ') && !isDisabled) fileInputRef.current?.click(); }}
+                            >
+                                {imagePreviewUrl ? (
+                                    <img
+                                        className="cl-upload-zone-img"
+                                        src={imagePreviewUrl}
+                                        alt="Preview"
+                                        style={{ transform: `scale(${imageScale})`, transformOrigin: 'center center' }}
+                                    />
+                                ) : (
+                                    <div className="cl-upload-placeholder">
+                                        <span className="cl-upload-icon">📷</span>
+                                        <span>Click to upload a photo</span>
+                                    </div>
+                                )}
+                            </div>
+                            {imagePreviewUrl && (
+                                <div className="cl-image-controls">
+                                    <label className="cl-scale-label" htmlFor="cl-scale">Zoom</label>
+                                    <input
+                                        id="cl-scale"
+                                        type="range"
+                                        className="cl-scale-slider"
+                                        min="1"
+                                        max="3"
+                                        step="0.05"
+                                        value={imageScale}
+                                        onChange={(e) => setImageScale(Number(e.target.value))}
+                                        disabled={isDisabled}
+                                    />
+                                    <button
+                                        type="button"
+                                        className="cl-upload-remove"
+                                        onClick={handleRemoveImage}
+                                        disabled={isDisabled}
+                                    >
+                                        Remove
+                                    </button>
+                                </div>
+                            )}
+                            <p className="cl-upload-hint">JPG, PNG, or WebP · max 5 MB · click zone to change</p>
                         </div>
 
                         {/* Categories */}

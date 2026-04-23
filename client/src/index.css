@@ -2431,6 +2431,42 @@ textarea.cl-input {
   color: var(--text-muted);
 }
 
+.cl-image-controls {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  margin-top: 0.25rem;
+}
+
+.cl-scale-label {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+.cl-scale-slider {
+  flex: 1;
+  accent-color: var(--navy);
+  cursor: pointer;
+}
+
+.cl-scale-slider:disabled { opacity: 0.5; cursor: not-allowed; }
+
+.cl-upload-remove {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  background: none;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 0.2rem 0.5rem;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.cl-upload-remove:hover:not(:disabled) { color: #9f1239; border-color: #9f1239; }
+.cl-upload-remove:disabled { opacity: 0.5; cursor: not-allowed; }
+
 .cl-categories-label {
   margin: 0 0 0.5rem;
   font-size: 0.72rem;
