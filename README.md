@@ -1,9 +1,40 @@
 # UVA Thrift
 
-UVA-only local marketplace app with:
+UVA Thrift is a marketplace specifically designed for college students with the goal of reducing end of year
+waste. Every year, students graduate, move, or otherwise have reason to throw away items that they own (furniture,
+clothing, school supplies, etc.) At the same, other students are beginning their college career, and others still
+are in need of furniture, clothing, school supplies, etc. While some students make the effort to donate or sell their
+belongings, it is our opinion that the existing infrastructure for facilitating these processes is not sufficient, and
+leads the majoirty of students to take the easy way out, turning to disposal rather than recycling. UVA Thrift aims
+to simplify this process by providing students with a straightforward platform to market their own items and browse those
+of other students. Moreover, we added integration with HoosReUse, UVA's donation initiative, to prompt students to donate
+their items if they are not able to sell them on our platform. Our hope is that UVA Thrift reduces the barrier of entry
+to recycling items and results in less waste every school year.
+
+### Contributors
+
+- Caden Kowalski (gpm9un)
+- Wadie Abboud (ucu8tt)
+- Michael Barry (mpy8fu)
+
+### Production Link
+https://uva-thrift-c085564027b1.herokuapp.com/
+
+### Tech Stack
+
 - Node.js + TypeScript backend (Express)
 - React + Vite frontend
 - PostgreSQL database
+- Hosting on Heroku
+
+---
+
+# Test production user account
+
+Since our application only accepts ```@virginia.edu``` email addresses, we can't make a true dummy account. Thus, for testing, if you are unable to create your own account, you can login with the following credentials:
+
+- Username: ```gpm9un@virginia.edu```
+- Password: ```ILoveUVA```
 
 ---
 
@@ -45,21 +76,22 @@ cd client && npm install && cd ..
 
 ## 3) Create local PostgreSQL database
 
-Make sure the `createdb-18` binary is added to $PATH
+Make sure the `createdb-18` binary is added to $PATH. The database must be named ```uva_thrift```. Then navigate into the server directory and run the migrate script to set up the database.
 
 ```bash
-createdb-18 uva_thrift_dev
+createdb-18 uva_thrift
 cd server && npm run migrate
 ```
 
 ---
 
-## 4) Create your Local `.env` file
+## 4) Create your local `.env` files
 
 Copy `.env.example` into `.env` in `server` and `client` directories:
 
 ```bash
-cp .env.example .env
+cd client && cp .env.example .env && cd ..
+cd server && cp .env.example .env && cd ..
 ```
 
 Copy the output of this command into the `SESSION_SECRET` variable in `server/.env`:
@@ -68,143 +100,13 @@ Copy the output of this command into the `SESSION_SECRET` variable in `server/.e
 openssl rand -hex 64
 ```
 
----
+You will need to get the following environment variables from someone on the development team:
+- ```SMTP_USER```
+- ```SMTP_PASS```
+- ```AWS_ACCESS_KEY_ID```
+- ```AWS_SECRET_ACCESS_KEY```
 
-## 5) SMTP setup (required for real email verification)
-
-The app sends verification links by email. We use **Brevo** via SMTP.
-
-You'll need to update the .env with the following:
-- `SMTP_HOST` (usually smtp-relay.brevo.com)
-- `SMTP_PORT` (587)
-- `SMTP_USER` (your Brevo login email)
-- `SMTP_PASS` (your Brevo SMTP master password)
-- `SMTP_FROM` (Verified sender email address)
-
-### Important note for local testing
-
-For local testing, you can leave these values as-is and the backend server will log the verification link to the console instead of sending it in an email. For production, configure an SMTP client and fill in the environment variables above.
-
----
-
-## 6) Connect the app to an S3 bucket for listing images
-
-The backend uploads listing images to S3 and stores the resulting image URL in the database. To make that work, you need all of the following:
-
-### A. Create an S3 bucket
-
-1. Sign in to AWS and open S3.
-2. Create a bucket in the region you want to use.
-3. Keep the bucket name and region. You will place both into `server/.env`.
-
-### B. Make uploaded images publicly viewable
-
-The frontend displays images using direct URLs returned by the backend, so uploaded objects must be publicly readable.
-
-You have two supported options:
-
-1. Use a public S3 bucket and let the app build URLs like `https://<bucket>.s3.<region>.amazonaws.com/<key>`.
-2. Use CloudFront or another public CDN/domain in front of the bucket and set `S3_PUBLIC_BASE_URL` to that public base URL.
-
-If you use a public bucket directly, add a bucket policy like this and replace `YOUR_BUCKET_NAME` with your actual bucket name:
-
-```json
-{
-   "Version": "2012-10-17",
-   "Statement": [
-      {
-         "Sid": "PublicReadForListingImages",
-         "Effect": "Allow",
-         "Principal": "*",
-         "Action": "s3:GetObject",
-         "Resource": "arn:aws:s3:::YOUR_BUCKET_NAME/*"
-      }
-   ]
-}
-```
-
-If your bucket has Block Public Access fully enabled, this public-read approach will not work until you adjust that setting or serve the files through CloudFront instead.
-
-### C. Create AWS credentials for the backend
-
-The server uses the AWS SDK default credential chain. For local development, the simplest approach is environment variables.
-
-Create an IAM user or role with permission to upload and delete objects in your bucket. At minimum, the backend needs:
-
-```json
-{
-   "Version": "2012-10-17",
-   "Statement": [
-      {
-         "Effect": "Allow",
-         "Action": [
-            "s3:PutObject",
-            "s3:DeleteObject"
-         ],
-         "Resource": "arn:aws:s3:::YOUR_BUCKET_NAME/*"
-      }
-   ]
-}
-```
-
-For local development, expose these credentials to the server process with standard AWS environment variables:
-
-- `AWS_ACCESS_KEY_ID`
-- `AWS_SECRET_ACCESS_KEY`
-- `AWS_SESSION_TOKEN` if you are using temporary credentials
-
-### D. Add the S3 settings to `server/.env`
-
-In `server/.env`, add:
-
-```env
-AWS_REGION=us-east-1
-S3_BUCKET_NAME=your-bucket-name
-S3_PUBLIC_BASE_URL=https://your-bucket-name.s3.us-east-1.amazonaws.com
-```
-
-Notes:
-
-- `AWS_REGION` is required.
-- `S3_BUCKET_NAME` is required.
-- `S3_PUBLIC_BASE_URL` is optional. If you leave it out, the backend will generate public URLs in the format `https://<bucket>.s3.<region>.amazonaws.com/<key>`.
-- `S3_PUBLIC_BASE_URL` should point to a public URL that browsers can load, such as a CloudFront distribution or a public S3 bucket endpoint.
-
-### E. Make sure your AWS credentials are available when the server runs
-
-One workable local setup is exporting them in the shell before starting the app:
-
-```bash
-export AWS_ACCESS_KEY_ID=your_access_key_id
-export AWS_SECRET_ACCESS_KEY=your_secret_access_key
-# only if needed
-export AWS_SESSION_TOKEN=your_session_token
-```
-
-Then start the app normally:
-
-```bash
-npm run dev
-```
-
-### F. Run the listing image migration
-
-If your database already existed before image support was added, run the server migration again so the `listings` table gets the `image_url` and `image_key` columns:
-
-```bash
-cd server
-npm run migrate
-```
-
-### G. Verify it works
-
-1. Start the app.
-2. Log in with a verified UVA account.
-3. Create a listing and choose an image file.
-4. Submit the listing.
-5. Confirm the image appears on the marketplace page and in My Items.
-
-If listing creation fails with `Listing image uploads are not configured.`, the server is missing `AWS_REGION` or `S3_BUCKET_NAME`.
+All other values may be left as-is. The app sends verification links by email through **Brevo** via SMTP. If you are running the server locally and have not configured the SMTP credentials listed above, email verification links will be logged to the console.
 
 ---
 
@@ -220,7 +122,7 @@ This starts:
 
 ---
 
-## 8) Test the full login flow (exact steps)
+## 8) Steps to login
 
 1. Open `http://localhost:5173`
 2. Click **Register**
@@ -230,20 +132,26 @@ This starts:
    - If SMTP not configured: copy link from backend terminal
 5. Open the verification link
 6. Return to login page and sign in with same email/password
-7. You should now see the basic **Profile** page
 
 ### Expected behavior:
 - Non-`@virginia.edu` email is rejected
 - Unverified users cannot log in
 - Verified users can log in and access profile
 
----
+## 9) Other usage instructions
 
-## 9) Current auth API endpoints
+Here are a few things you can do in the app:
 
-- `POST /api/auth/register`
-- `POST /api/auth/resend-verification`
-- `GET /api/auth/verify-email?token=...`
-- `POST /api/auth/login`
-- `GET /api/auth/me` (requires `Authorization: Bearer <jwt>`)
-- `GET /api/health`
+1. Browse listings that others have posted on the home page. You can search, sort, and filter to narrow down displayed listings. You can also report suspicious  or inappropriate listings by clicking the "!" button.
+2. Create an item listing by clicking the "+ New Item" button in the navigation bar.
+3. Click on an item listing to view the item's detail page. From here, you can sign up for email notifications if the listing is modified or deleted, or message the owner if you have a question or are interested in the item.
+4. Click on the profile button in the navigation bar and click Lists in the sidebar. From here, you can create and modify custom lists to track coherent sets of items. On the home page, you can click the plus button on any listing to add it to one of your lists.
+5. From the profile page, click Alerts in the sidebar. From here, you can view and modify items you are watching, as well as create custom alerts to receive emails if items are listed that match your criteria.
+6. From the profile page, click My Items in the sidebar. From here, you can view and mofify the items that you have listed.
+7. From the profile page, click General in the sidebar. From here, you can view and modify general information about your profile. Set the phone number, display name, and venmo information to be able to share them when messaging with other users.
+8. On the messages page, you can view any conversations you are having with other users. The messages page will also display notifications for in-app processes. Click on a thread to chat with the owner of an item, share contact information, and suggest an exchange location.
+9. Click on the HoosReUse tab in the navigation bar to view information about the HoosReUse initiative and find more information on their website.
+10. When creating an item listing, you can set an "expiration window" such that you will be prompted to donate your item through HoosReUse if it does not sell on UVA Thrift within that window.
+
+# Sources
+We used ChatGPT and Claude for much of the UI styling, as well as implementing some of the more complex backend features (like authentication).
