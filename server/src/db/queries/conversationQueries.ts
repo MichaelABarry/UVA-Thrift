@@ -2,7 +2,7 @@ import { pool } from '../pool';
 
 export type ConversationRecord = {
     id: string;
-    listing_id: string;
+    listing_id: string | null;
     buyer_id: string;
     seller_id: string;
     created_at: string;
@@ -19,12 +19,14 @@ export type MessageRecord = {
 
 export type MessageWithSenderRecord = MessageRecord & {
     sender_email: string;
+    sender_display_name: string | null;
 };
 
 export type ConversationSummaryRecord = ConversationRecord & {
-    listing_name: string;
+    listing_name: string | null;
     listing_image_url: string | null;
-    listing_price_cents: number;
+    listing_price_cents: number | null;
+    listing_deleted_at: string | null;
     other_party_email: string;
     last_message_content: string | null;
     last_message_at: string | null;
@@ -62,6 +64,7 @@ export async function findConversationsByUserId(userId: string) {
             l.name        AS listing_name,
             l.image_url   AS listing_image_url,
             l.price_cents AS listing_price_cents,
+            l.deleted_at  AS listing_deleted_at,
             CASE
                 WHEN c.buyer_id = $1 THEN u_seller.email
                 ELSE u_buyer.email
@@ -69,7 +72,7 @@ export async function findConversationsByUserId(userId: string) {
             m.content     AS last_message_content,
             m.created_at  AS last_message_at
         FROM conversations c
-        JOIN listings l        ON l.id = c.listing_id
+        LEFT JOIN listings l   ON l.id = c.listing_id
         JOIN users u_buyer     ON u_buyer.id  = c.buyer_id
         JOIN users u_seller    ON u_seller.id = c.seller_id
         LEFT JOIN LATERAL (
@@ -89,7 +92,7 @@ export async function findConversationsByUserId(userId: string) {
 
 export async function findMessagesByConversationId(conversationId: string) {
     const result = await pool.query<MessageWithSenderRecord>(
-        `SELECT ms.*, u.email AS sender_email
+        `SELECT ms.*, u.email AS sender_email, u.display_name AS sender_display_name
         FROM messages ms
         JOIN users u ON u.id = ms.sender_id
         WHERE ms.conversation_id = $1
@@ -98,6 +101,17 @@ export async function findMessagesByConversationId(conversationId: string) {
     );
 
     return result.rows;
+}
+
+export async function countMessagesFromSender(
+    conversationId: string,
+    senderId: string
+): Promise<number> {
+    const result = await pool.query<{ count: string }>(
+        'SELECT COUNT(*) AS count FROM messages WHERE conversation_id = $1 AND sender_id = $2',
+        [conversationId, senderId]
+    );
+    return parseInt(result.rows[0].count, 10);
 }
 
 export async function createMessage(
@@ -114,7 +128,7 @@ export async function createMessage(
         _update AS (
             UPDATE conversations SET updated_at = NOW() WHERE id = $1
         )
-        SELECT i.*, u.email AS sender_email
+        SELECT i.*, u.email AS sender_email, u.display_name AS sender_display_name
         FROM inserted i
         JOIN users u ON u.id = i.sender_id`,
         [conversationId, senderId, content]

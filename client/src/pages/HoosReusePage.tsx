@@ -55,7 +55,6 @@ export function HoosReusePage() {
 
                 {/* ── Interested section ── */}
                 <section className="hoos-reuse-callout">
-                    <div className="hoos-reuse-callout-icon">💡</div>
                     <div className="hoos-reuse-callout-content">
                         <h3 className="hoos-reuse-callout-title">Couldn't sell it on UVA Thrift?</h3>
                         <p className="hoos-reuse-callout-body">

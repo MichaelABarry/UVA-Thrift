@@ -51,6 +51,7 @@ export async function findWatchedListingsByUserId(userId: string) {
         FROM listing_watch_subscriptions s
         JOIN listings l ON l.id = s.listing_id
         WHERE s.user_id = $1
+          AND l.deleted_at IS NULL
         ORDER BY s.created_at DESC`,
         [userId]
     );

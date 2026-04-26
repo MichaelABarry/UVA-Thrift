@@ -4,19 +4,23 @@ import {
     findConversationById,
     findConversationsByUserId,
     findMessagesByConversationId,
+    countMessagesFromSender,
     createMessage,
     type ConversationRecord,
     type ConversationSummaryRecord,
     type MessageWithSenderRecord
 } from '../db/queries/conversationQueries';
-import { findListingById } from '../db/queries/listingQueries';
+import { findListingById, findListingByIdIncludingDeleted } from '../db/queries/listingQueries';
+import { findUserById } from '../db/queries/userQueries';
 import { HttpError } from '../utils/httpError';
+import { sendNewMessageNotificationEmail } from './emailService';
 
 type MessageResponse = {
     id: string;
     conversationId: string;
     senderId: string;
     senderEmail: string;
+    senderName: string | null;
     senderInitial: string;
     content: string;
     createdAt: string;
@@ -24,10 +28,11 @@ type MessageResponse = {
 
 type ConversationResponse = {
     id: string;
-    listingId: string;
+    listingId: string | null;
     listingName: string;
     listingImageUrl: string | null;
     listingPrice: number;
+    isClosed: boolean;
     buyerId: string;
     sellerId: string;
     createdAt: string;
@@ -37,10 +42,11 @@ type ConversationResponse = {
 
 type ConversationSummaryResponse = {
     id: string;
-    listingId: string;
+    listingId: string | null;
     listingName: string;
     listingImageUrl: string | null;
     listingPrice: number;
+    isClosed: boolean;
     otherPartyEmail: string;
     lastMessagePreview: string | null;
     lastMessageAt: string | null;
@@ -56,12 +62,15 @@ const sendMessageSchema = z.object({
 });
 
 function toMessageResponse(record: MessageWithSenderRecord): MessageResponse {
+    const senderName = record.sender_display_name ?? null;
+    const displayForInitial = senderName ?? record.sender_email;
     return {
         id: record.id,
         conversationId: record.conversation_id,
         senderId: record.sender_id,
         senderEmail: record.sender_email,
-        senderInitial: record.sender_email.charAt(0).toUpperCase(),
+        senderName,
+        senderInitial: displayForInitial.charAt(0).toUpperCase(),
         content: record.content,
         createdAt: record.created_at
     };
@@ -72,6 +81,7 @@ function toConversationResponse(
     listingName: string,
     listingImageUrl: string | null,
     listingPriceCents: number,
+    isClosed: boolean,
     messages: MessageWithSenderRecord[]
 ): ConversationResponse {
     return {
@@ -80,6 +90,7 @@ function toConversationResponse(
         listingName,
         listingImageUrl,
         listingPrice: listingPriceCents / 100,
+        isClosed,
         buyerId: conv.buyer_id,
         sellerId: conv.seller_id,
         createdAt: conv.created_at,
@@ -92,9 +103,10 @@ function toConversationSummaryResponse(record: ConversationSummaryRecord): Conve
     return {
         id: record.id,
         listingId: record.listing_id,
-        listingName: record.listing_name,
+        listingName: record.listing_name ?? 'Deleted listing',
         listingImageUrl: record.listing_image_url,
-        listingPrice: record.listing_price_cents / 100,
+        listingPrice: (record.listing_price_cents ?? 0) / 100,
+        isClosed: !record.listing_id || Boolean(record.listing_deleted_at) || !record.listing_name,
         otherPartyEmail: record.other_party_email,
         lastMessagePreview: record.last_message_content
             ? record.last_message_content.slice(0, 80)
@@ -127,6 +139,7 @@ export async function getOrCreateConversation(
         listing.name,
         listing.image_url,
         listing.price_cents,
+        false,
         messages
     );
 }
@@ -145,14 +158,18 @@ export async function getConversationForUser(
         throw new HttpError('Forbidden.', 403);
     }
 
-    const listing = await findListingById(conversation.listing_id);
+    const listing = conversation.listing_id
+        ? await findListingByIdIncludingDeleted(conversation.listing_id)
+        : null;
     const messages = await findMessagesByConversationId(conversationId);
+    const isClosed = !conversation.listing_id || !listing || Boolean(listing.deleted_at);
 
     return toConversationResponse(
         conversation,
         listing?.name ?? 'Deleted listing',
         listing?.image_url ?? null,
         listing?.price_cents ?? 0,
+        isClosed,
         messages
     );
 }
@@ -178,6 +195,32 @@ export async function sendMessageToConversation(
         throw new HttpError('Forbidden.', 403);
     }
 
+    const listing = conversation.listing_id
+        ? await findListingByIdIncludingDeleted(conversation.listing_id)
+        : null;
+
+    if (!conversation.listing_id || !listing || listing.deleted_at) {
+        throw new HttpError('This listing has been removed. This conversation is closed.', 409);
+    }
+
+    const senderMessageCount = await countMessagesFromSender(conversationId, userId);
     const message = await createMessage(conversationId, userId, parsed.content);
+
+    if (senderMessageCount === 0) {
+        const recipientId = userId === conversation.buyer_id
+            ? conversation.seller_id
+            : conversation.buyer_id;
+        const recipient = await findUserById(recipientId);
+        if (recipient) {
+            const senderName = message.sender_display_name ?? message.sender_email;
+            void sendNewMessageNotificationEmail(
+                recipient.email,
+                senderName,
+                listing.name,
+                conversationId
+            );
+        }
+    }
+
     return toMessageResponse(message);
 }

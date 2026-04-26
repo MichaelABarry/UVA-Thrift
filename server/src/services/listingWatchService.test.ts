@@ -44,7 +44,7 @@ function makeListingRecord(overrides: Partial<{
     image_key: string | null;
     created_at: string;
     updated_at: string;
-	expires_at: string;
+    deleted_at: string | null;
 }> = {}) {
     return {
         id: 'listing-1',
@@ -58,7 +58,7 @@ function makeListingRecord(overrides: Partial<{
         image_key: null,
         created_at: '2026-03-23T12:00:00.000Z',
         updated_at: '2026-03-23T12:00:00.000Z',
-		expires_at: '2026-06-15T12:00:00.000Z',
+        deleted_at: null,
         ...overrides
     };
 }

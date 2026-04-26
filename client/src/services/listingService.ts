@@ -54,3 +54,9 @@ export function deleteListing(listingId: string) {
         expectedStatus: 204
     });
 }
+
+export function reportListing(listingId: string) {
+    return apiFetch<{ listingDeleted: boolean }>(`/api/listings/${listingId}/report`, {
+        method: 'PUT'
+    });
+}

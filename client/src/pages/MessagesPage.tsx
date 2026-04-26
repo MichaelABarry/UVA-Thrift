@@ -9,6 +9,7 @@ import {
     type SystemNotification,
 } from '../services/systemNotificationService';
 import type { ConversationSummary } from '../types/conversation';
+import { formatConversationPreview } from '../utils/conversationContent';
 
 function formatDate(iso: string): string {
     const date = new Date(iso);
@@ -196,14 +197,19 @@ export function MessagesPage() {
                                 </div>
                                 <div className="messages-row-body">
                                     <div className="messages-row-header">
-                                        <span className="messages-row-listing">{conv.listingName}</span>
+                                        <span className="messages-row-listing">
+                                            {conv.listingName}
+                                            {conv.isClosed ? (
+                                                <span className="messages-row-status">Conversation ended</span>
+                                            ) : null}
+                                        </span>
                                         <span className="messages-row-time">
                                             {formatDate(conv.lastMessageAt ?? conv.updatedAt)}
                                         </span>
                                     </div>
                                     <span className="messages-row-other">{conv.otherPartyEmail}</span>
                                     <p className="messages-row-preview">
-                                        {conv.lastMessagePreview ?? 'No messages yet'}
+                                        {formatConversationPreview(conv.lastMessagePreview) ?? 'No messages yet'}
                                     </p>
                                 </div>
                             </button>

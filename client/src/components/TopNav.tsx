@@ -10,7 +10,7 @@ const LINKS: NavLink[] = [
     { to: '/home', label: 'Home' },
     { to: '/messages', label: 'Messages' },
     { to: '/profile', label: 'Profile' },
-	{ to: '/hoos-reuse', label: 'HoosReUse' },
+    { to: '/hoos-reuse', label: 'HoosReUse' },
     { to: '/listings/new', label: '+ New Item', className: 'nav-btn-add' }
 ];
 
@@ -21,7 +21,15 @@ export function TopNav() {
         <header className="top-nav" aria-label="Top navigation">
             <div className="top-nav-inner">
                 <Link to="/home" className="top-nav-brand">
-                    UVA&nbsp;<span className="top-nav-brand-accent">Thrift</span>
+                    <img
+                        src="/UVAThrift-favicon.jpg"
+                        alt=""
+                        aria-hidden="true"
+                        className="top-nav-brand-icon"
+                    />
+                    <span>
+                        UVA&nbsp;<span className="top-nav-brand-accent">Thrift</span>
+                    </span>
                 </Link>
                 <nav className="top-nav-links">
                     {LINKS.map((link) => {
@@ -31,7 +39,7 @@ export function TopNav() {
                             <Link
                                 key={link.to}
                                 to={link.to}
-                                className={`nav-link ${extra} ${isActive && !extra ? 'nav-link-active' : ''} ${isActive && extra ? 'nav-link-active' : ''}`}
+                                className={`nav-link ${extra} ${isActive && !extra ? 'nav-link-active' : ''}`}
                             >
                                 {link.label}
                             </Link>

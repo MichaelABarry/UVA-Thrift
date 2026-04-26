@@ -5,26 +5,20 @@ import { LISTING_CATEGORY_OPTIONS, LISTING_CONDITION_OPTIONS, LISTING_SUBCATEGOR
 import { useAuth } from '../hooks/useAuth';
 import { createListing, getMyListing, updateListing } from '../services/listingService';
 
-const EXPIRATION_OPTIONS = [
-    { value: 15, label: '15 days' },
-    { value: 30, label: '30 days', default: true },
-    { value: 60, label: '60 days' },
-];
-
 export function CreateListingPage() {
     const { user, loading } = useAuth();
     const navigate = useNavigate();
     const { listingId } = useParams();
     const isEditing = Boolean(listingId);
-	const [listing, setListing] = useState<{ expiresAt?: string } | null>(null);
     const [name, setName] = useState('');
     const [description, setDescription] = useState('');
     const [descriptionOpen, setDescriptionOpen] = useState(false);
     const [price, setPrice] = useState('');
     const [condition, setCondition] = useState('good');
-	const [expirationDays, setExpirationDays] = useState(30);
     const [categories, setCategories] = useState<string[]>([]);
     const [selectedImage, setSelectedImage] = useState<File | null>(null);
+    const [imagePreviewUrl, setImagePreviewUrl] = useState<string | null>(null);
+    const [imageScale, setImageScale] = useState(1);
     const [message, setMessage] = useState<string | null>(null);
     const [error, setError] = useState<string | null>(null);
     const [submitting, setSubmitting] = useState(false);
@@ -43,7 +37,6 @@ export function CreateListingPage() {
 
             try {
                 const response = await getMyListing(listingId);
-				setListing(response.listing);
                 setName(response.listing.name);
                 setDescription(response.listing.description);
                 if (response.listing.description) {
@@ -52,8 +45,6 @@ export function CreateListingPage() {
                 setPrice(response.listing.price.toString());
                 setCondition(response.listing.condition);
                 setCategories(response.listing.categories);
-
-				//when editing, don't change the expirations. Keep default
             } catch (loadError) {
                 setError(loadError instanceof Error ? loadError.message : 'Unable to load listing.');
             } finally {
@@ -63,6 +54,10 @@ export function CreateListingPage() {
 
         void loadListing();
     }, [listingId, user?.isEmailVerified]);
+
+    useEffect(() => {
+        return () => { if (imagePreviewUrl) URL.revokeObjectURL(imagePreviewUrl); };
+    }, [imagePreviewUrl]);
 
     if (!loading && !user?.isEmailVerified) {
         return <Navigate to="/" replace />;
@@ -89,23 +84,65 @@ export function CreateListingPage() {
     function handleImageChange(event: ChangeEvent<HTMLInputElement>) {
         const file = event.target.files?.[0] ?? null;
         setSelectedImage(file);
+        setImagePreviewUrl(file ? URL.createObjectURL(file) : null);
+        setImageScale(1);
+    }
+
+    function handleRemoveImage() {
+        setSelectedImage(null);
+        setImagePreviewUrl(null);
+        setImageScale(1);
+        if (fileInputRef.current) fileInputRef.current.value = '';
+    }
+
+    async function getProcessedImageFile(): Promise<File | null> {
+        if (!selectedImage || !imagePreviewUrl) return null;
+        return new Promise((resolve) => {
+            const W = 800, H = 600;
+            const canvas = document.createElement('canvas');
+            canvas.width = W; canvas.height = H;
+            const ctx = canvas.getContext('2d');
+            if (!ctx) { resolve(null); return; }
+            const img = new Image();
+            img.onload = () => {
+                const coverScale = Math.max(W / img.naturalWidth, H / img.naturalHeight);
+                const drawW = img.naturalWidth * coverScale * imageScale;
+                const drawH = img.naturalHeight * coverScale * imageScale;
+                ctx.drawImage(img, (W - drawW) / 2, (H - drawH) / 2, drawW, drawH);
+                canvas.toBlob(
+                    (blob) => resolve(blob
+                        ? new File([blob], selectedImage.name.replace(/\.[^.]+$/, '.jpg'), { type: 'image/jpeg' })
+                        : null
+                    ),
+                    'image/jpeg', 0.9
+                );
+            };
+            img.onerror = () => resolve(null);
+            img.src = imagePreviewUrl;
+        });
     }
 
     async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
         event.preventDefault();
-        setSubmitting(true);
         setMessage(null);
         setError(null);
 
+        if (categories.length === 0) {
+            setError('Please select at least one category.');
+            return;
+        }
+
+        setSubmitting(true);
+
         try {
+            const processedImage = selectedImage ? (await getProcessedImageFile() ?? selectedImage) : null;
             const payload = {
                 name: name.trim(),
                 description: description.trim(),
                 price: Number(price),
                 categories,
                 condition,
-				expirationDays,
-                image: selectedImage,
+                image: processedImage,
             };
 
             if (listingId) {
@@ -225,69 +262,67 @@ export function CreateListingPage() {
                             </select>
                         </div>
 
-						{/* Expiry date display when editing */}
-                        {isEditing && listing?.expiresAt ? (
-                            <div className="cl-field">
-                                <p className="cl-label">Listing Expiration</p>
-                                <p className="cl-expiry-display">
-                                    This listing expires on{' '}
-                                    <strong>
-                                        {new Date(listing.expiresAt).toLocaleDateString('en-US', {
-                                            month: 'long',
-                                            day: 'numeric',
-                                            year: 'numeric',
-                                        })}
-                                    </strong>
-                                </p>
-                            </div>
-                        ) : null}
-
-						{/* Expiration */}
-                        {!isEditing ? (
-                            <div className="cl-field">
-                                <p className="cl-label">Listing Expiration</p>
-                                <p className="cl-field-hint">
-                                    Your listing will automatically expire after this period. You'll be notified when it does.
-                                </p>
-                                <div className="cl-expiry-options">
-                                    {EXPIRATION_OPTIONS.map((opt) => (
-                                        <label
-                                            key={opt.value}
-                                            className={`cl-expiry-option${expirationDays === opt.value ? ' cl-expiry-option--selected' : ''}`}
-                                        >
-                                            <input
-                                                type="radio"
-                                                name="expirationDays"
-                                                value={opt.value}
-                                                checked={expirationDays === opt.value}
-                                                onChange={() => setExpirationDays(opt.value)}
-                                                disabled={isDisabled}
-                                                style={{ display: 'none' }}
-                                            />
-                                            <span className="cl-expiry-days">{opt.value}</span>
-                                            <span className="cl-expiry-unit">days</span>
-                                            {opt.default ? <span className="cl-expiry-badge">Default</span> : null}
-                                        </label>
-                                    ))}
-                                </div>
-                            </div>
-                        ) : null}
-
                         {/* Image upload */}
                         <div className="cl-field">
-                            <label className="cl-label" htmlFor="cl-image">
+                            <label className="cl-label">
                                 Item image <span className="cl-optional">(optional)</span>
                             </label>
                             <input
                                 ref={fileInputRef}
                                 id="cl-image"
-                                className="cl-input"
                                 type="file"
                                 accept="image/*"
                                 onChange={handleImageChange}
                                 disabled={isDisabled}
+                                style={{ display: 'none' }}
                             />
-                            <p className="cl-upload-hint">JPG, PNG, or WebP · max 5 MB</p>
+                            <div
+                                className="cl-upload-zone"
+                                role="button"
+                                tabIndex={isDisabled ? -1 : 0}
+                                aria-label="Upload image"
+                                onClick={() => { if (!isDisabled) fileInputRef.current?.click(); }}
+                                onKeyDown={(e) => { if ((e.key === 'Enter' || e.key === ' ') && !isDisabled) fileInputRef.current?.click(); }}
+                            >
+                                {imagePreviewUrl ? (
+                                    <img
+                                        className="cl-upload-zone-img"
+                                        src={imagePreviewUrl}
+                                        alt="Preview"
+                                        style={{ transform: `scale(${imageScale})`, transformOrigin: 'center center' }}
+                                    />
+                                ) : (
+                                    <div className="cl-upload-placeholder">
+                                        <span className="cl-upload-icon">📷</span>
+                                        <span>Click to upload a photo</span>
+                                    </div>
+                                )}
+                            </div>
+                            {imagePreviewUrl && (
+                                <div className="cl-image-controls">
+                                    <label className="cl-scale-label" htmlFor="cl-scale">Zoom</label>
+                                    <input
+                                        id="cl-scale"
+                                        type="range"
+                                        className="cl-scale-slider"
+                                        min="1"
+                                        max="3"
+                                        step="0.05"
+                                        value={imageScale}
+                                        onChange={(e) => setImageScale(Number(e.target.value))}
+                                        disabled={isDisabled}
+                                    />
+                                    <button
+                                        type="button"
+                                        className="cl-upload-remove"
+                                        onClick={handleRemoveImage}
+                                        disabled={isDisabled}
+                                    >
+                                        Remove
+                                    </button>
+                                </div>
+                            )}
+                            <p className="cl-upload-hint">JPG, PNG, or WebP · max 5 MB · click zone to change</p>
                         </div>
 
                         {/* Categories */}
