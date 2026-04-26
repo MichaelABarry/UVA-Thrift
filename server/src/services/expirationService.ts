@@ -8,6 +8,7 @@ import {
 const HOOS_REUSE_URL = 'https://sustainability.virginia.edu/hoos-reuse';
 const CHECK_INTERVAL_MS = 1000 * 60*60*24; // 24 hours
 
+
 // Check for newly expired listings and send email + in-app notification to each owner.
 export async function notifyExpiredListings() {
     const expired = await findExpiredUnnotifiedListings();

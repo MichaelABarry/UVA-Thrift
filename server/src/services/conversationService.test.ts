@@ -57,6 +57,7 @@ function makeListingRecord(overrides: Partial<{
     created_at: string;
     updated_at: string;
     deleted_at: string | null;
+	expires_at: string;
 }> = {}) {
     return {
         id: 'listing-1',
@@ -71,6 +72,7 @@ function makeListingRecord(overrides: Partial<{
         created_at: '2026-03-15T12:00:00.000Z',
         updated_at: '2026-03-15T12:00:00.000Z',
         deleted_at: null,
+		expires_at: '2026-06-15T12:00:00.000Z',
         ...overrides
     };
 }

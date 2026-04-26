@@ -20,6 +20,7 @@ const listingSchema = z.object({
     description: z.string().trim().max(2000).optional().default(''),
     price: z.coerce.number().finite().nonnegative().max(100000),
     condition: z.enum(['new', 'excellent', 'good', 'fair', 'poor']),
+	expirationDays: z.coerce.number().int().min(1).max(365).optional().default(30),
     categories: z.preprocess(
         (value) => {
             if (typeof value === 'string') {
@@ -54,6 +55,7 @@ function toListingResponse(listing: ListingRecord) {
         condition: listing.condition,
         imageUrl: listing.image_url,
         createdAt: listing.created_at,
+		expiresAt: listing.expires_at,
         isReported: Boolean(listing.is_reported)
     };
 }
@@ -62,6 +64,9 @@ export async function createListingForUser(userId: string, input: unknown, file?
     const parsed = listingSchema.parse(input);
     const normalizedCategories = normalizeCategories(parsed.categories);
     const uploadedImage = file ? await uploadListingImage(file) : null;
+
+	const expiresAt = new Date();
+	expiresAt.setDate(expiresAt.getDate() + (parsed.expirationDays ?? 30));
 
     try {
         const listing = await createListing({
@@ -72,7 +77,8 @@ export async function createListingForUser(userId: string, input: unknown, file?
             categories: normalizedCategories,
             condition: parsed.condition,
             imageUrl: uploadedImage?.imageUrl ?? null,
-            imageKey: uploadedImage?.imageKey ?? null
+            imageKey: uploadedImage?.imageKey ?? null,
+			expiresAt
         });
 
         const response = toListingResponse(listing);

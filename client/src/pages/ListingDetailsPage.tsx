@@ -151,7 +151,7 @@ export function ListingDetailsPage() {
                 {listing && isExpired && isOwnListing ? (
                     <div className="expiry-banner expiry-banner--expired">
                         <div className="expiry-banner-text">
-                            <strong>⏰ This listing has expired.</strong> Nobody grabbed it — that's okay!
+                            <strong>This listing has expired.</strong> Nobody grabbed it. That's okay!
                             Consider donating it through Hoos ReUse to keep it out of the landfill.
                         </div>
                         <Link to="/hoos-reuse" className="button expiry-banner-btn">
