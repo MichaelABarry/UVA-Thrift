@@ -168,21 +168,21 @@ export function ListingDetailsPage() {
 
                             {user?.id !== listing.userId ? (
                                 <div className="listing-details-actions">
-                                    <button
-                                        className={`button ${watching ? 'button-secondary' : 'button-accent'}`}
-                                        type="button"
-                                        onClick={handleWatchToggle}
-                                        disabled={loadingWatchState || watchSubmitting}
-                                    >
-                                        {loadingWatchState
-                                            ? 'Loading alert...'
-                                            : watchSubmitting
-                                                ? 'Saving...'
-                                                : watching
-                                                    ? 'Stop Watching Item'
-                                                    : 'Email Me About Changes'}
-                                    </button>
-                                    {!showMessageCompose ? (
+                                    <div className="listing-details-action-row">
+                                        <button
+                                            className={`button ${watching ? 'button-secondary' : 'button-accent'}`}
+                                            type="button"
+                                            onClick={handleWatchToggle}
+                                            disabled={loadingWatchState || watchSubmitting}
+                                        >
+                                            {loadingWatchState
+                                                ? 'Loading alert...'
+                                                : watchSubmitting
+                                                    ? 'Saving...'
+                                                    : watching
+                                                        ? 'Stop Watching Item'
+                                                        : 'Email Me About Changes'}
+                                        </button>
                                         <button
                                             className="button button-secondary"
                                             type="button"
@@ -190,7 +190,9 @@ export function ListingDetailsPage() {
                                         >
                                             Message Seller
                                         </button>
-                                    ) : (
+                                    </div>
+
+                                    {showMessageCompose ? (
                                         <div className="message-compose">
                                             <textarea
                                                 className="input"
@@ -219,7 +221,7 @@ export function ListingDetailsPage() {
                                                 </button>
                                             </div>
                                         </div>
-                                    )}
+                                    ) : null}
                                 </div>
                             ) : null}
                         </div>

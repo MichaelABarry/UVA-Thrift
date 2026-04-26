@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link, Navigate, useParams } from 'react-router-dom';
 import { Circle, MapContainer, Marker, TileLayer } from 'react-leaflet';
 import L from 'leaflet';
@@ -7,10 +7,18 @@ import { useAuth } from '../hooks/useAuth';
 import { getConversation, sendMessage } from '../services/conversationService';
 import type { Conversation, Message } from '../types/conversation';
 import { MeetupAreaPicker } from '../components/MeetupAreaPicker';
+import {
+    createContactShareMessage,
+    parseContactShareMessage,
+    parseMeetupMessage,
+    type ContactShareData,
+    type MeetupData
+} from '../utils/conversationContent';
 
 const POLL_INTERVAL_MS = 5000;
 
 const MEETUP_RADIUS_METERS = 100;
+const MEETUP_AREA_COLOR = '#5f7494';
 const meetupPinIcon = L.icon({
     iconRetinaUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png',
     iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
@@ -28,16 +36,56 @@ function formatTime(iso: string): string {
     });
 }
 
-// Parse a MEETUP: encoded message into its data, or return null for normal messages.
-type MeetupData = { lat: number; lng: number; label: string; address?: string };
-
-function parseMeetupMessage(content: string): MeetupData | null {
-    if (!content.startsWith('MEETUP:')) return null;
-    try {
-        return JSON.parse(content.slice('MEETUP:'.length)) as MeetupData;
-    } catch {
-        return null;
+function getLatestMeetup(messages: Message[]): MeetupData | null {
+    for (let index = messages.length - 1; index >= 0; index -= 1) {
+        const meetup = parseMeetupMessage(messages[index].content);
+        if (meetup) {
+            return meetup;
+        }
     }
+
+    return null;
+}
+
+function getLatestContactShare(messages: Message[], senderId: string | null | undefined): ContactShareData | null {
+    if (!senderId) return null;
+
+    for (let index = messages.length - 1; index >= 0; index -= 1) {
+        const message = messages[index];
+        if (message.senderId !== senderId) continue;
+
+        const sharedContact = parseContactShareMessage(message.content);
+        if (sharedContact) {
+            return sharedContact;
+        }
+    }
+
+    return null;
+}
+
+function formatPossessiveName(name: string): string {
+    return name.endsWith('s') ? `${name}'` : `${name}'s`;
+}
+
+function getOtherPartyFirstName(messages: Message[], senderId: string | null | undefined): string | null {
+    if (!senderId) return null;
+
+    for (let index = messages.length - 1; index >= 0; index -= 1) {
+        const message = messages[index];
+        if (message.senderId !== senderId) continue;
+
+        const senderName = message.senderName?.trim();
+        if (senderName) {
+            return senderName.split(/\s+/)[0];
+        }
+
+        const emailName = message.senderEmail.split('@')[0]?.trim();
+        if (emailName) {
+            return emailName.charAt(0).toUpperCase() + emailName.slice(1);
+        }
+    }
+
+    return null;
 }
 
 // Renders a chat bubble — either a regular text bubble or an embedded map bubble.
@@ -145,9 +193,9 @@ function MessageBubble({ msg, isOwn }: { msg: Message; isOwn: boolean }) {
                                         center={[meetup.lat, meetup.lng]}
                                         radius={MEETUP_RADIUS_METERS}
                                         pathOptions={{
-                                            color: '#E57200',
-                                            fillColor: '#E57200',
-                                            fillOpacity: 0.18,
+                                            color: MEETUP_AREA_COLOR,
+                                            fillColor: MEETUP_AREA_COLOR,
+                                            fillOpacity: 0.14,
                                             weight: 2
                                         }}
                                     />
@@ -159,7 +207,7 @@ function MessageBubble({ msg, isOwn }: { msg: Message; isOwn: boolean }) {
                             </div>
 
                             <p className="conv-meetup-modal-note">
-                                Orange circle = approximate area. Confirm exact spot in chat.
+                                Shaded circle = approximate area. Confirm the exact handoff spot in chat.
                             </p>
                         </div>
                     </div>
@@ -184,6 +232,45 @@ export function ConversationPage() {
     const [sharePhone, setSharePhone] = useState(false);
     const [shareVenmo, setShareVenmo] = useState(false);
     const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+    const messagesContainerRef = useRef<HTMLDivElement | null>(null);
+    const previousMessageCountRef = useRef(0);
+    const conversationClosed = Boolean(conversation?.isClosed);
+    const otherPartyId = conversation
+        ? (user?.id === conversation.buyerId ? conversation.sellerId : conversation.buyerId)
+        : null;
+    const visibleMessages = useMemo(
+        () => messages.filter((message) => !parseContactShareMessage(message.content)),
+        [messages]
+    );
+    const currentMeetup = useMemo(() => getLatestMeetup(messages), [messages]);
+    const mySharedContact = useMemo(() => getLatestContactShare(messages, user?.id), [messages, user?.id]);
+    const otherSharedContact = useMemo(
+        () => getLatestContactShare(messages, otherPartyId),
+        [messages, otherPartyId]
+    );
+    const otherPartyFirstName = useMemo(
+        () => getOtherPartyFirstName(messages, otherPartyId),
+        [messages, otherPartyId]
+    );
+    const sharedWithYouTitle = otherPartyFirstName
+        ? `${formatPossessiveName(otherPartyFirstName)} Contact Info`
+        : 'Shared With You';
+    const currentMeetupLocation = useMemo(
+        () => currentMeetup
+            ? {
+                lat: currentMeetup.lat,
+                lng: currentMeetup.lng,
+                label: currentMeetup.label,
+                address: currentMeetup.address ?? currentMeetup.label
+            }
+            : null,
+        [currentMeetup?.address, currentMeetup?.label, currentMeetup?.lat, currentMeetup?.lng]
+    );
+
+    useEffect(() => {
+        setSharePhone(Boolean(user?.phoneNumber && mySharedContact?.phoneNumber === user.phoneNumber));
+        setShareVenmo(Boolean(user?.venmoUsername && mySharedContact?.venmoUsername === user.venmoUsername));
+    }, [mySharedContact?.phoneNumber, mySharedContact?.venmoUsername, user?.phoneNumber, user?.venmoUsername]);
 
     useEffect(() => {
         async function load() {
@@ -210,6 +297,7 @@ export function ConversationPage() {
         if (!conversationId) return;
         try {
             const response = await getConversation(conversationId);
+            setConversation(response.conversation);
             setMessages(response.conversation.messages);
         } catch {
             // Silently ignore poll failures
@@ -222,29 +310,66 @@ export function ConversationPage() {
         return () => { if (pollRef.current) clearInterval(pollRef.current); };
     }, [conversationId, user?.isEmailVerified, pollMessages]);
 
-    async function handleShareContact() {
-        if (!conversationId) return;
-        const lines: string[] = ['Here is my contact/payment info:'];
-        if (sharePhone && user?.phoneNumber) lines.push(`Phone: ${user.phoneNumber}`);
-        if (shareVenmo && user?.venmoUsername) lines.push(`Venmo: @${user.venmoUsername}`);
-        const content = lines.join('\n');
+    useEffect(() => {
+        const messageContainer = messagesContainerRef.current;
+        const previousCount = previousMessageCountRef.current;
+        const hasLoadedMessages = previousCount === 0 && visibleMessages.length > 0;
+        const hasNewMessages = visibleMessages.length > previousCount;
+
+        if (messageContainer && (hasLoadedMessages || hasNewMessages)) {
+            messageContainer.scrollTop = messageContainer.scrollHeight;
+        }
+
+        previousMessageCountRef.current = visibleMessages.length;
+    }, [visibleMessages]);
+
+    async function handleShareContact(nextSharePhone: boolean, nextShareVenmo: boolean) {
+        if (!conversationId || conversationClosed) return;
+        const content = createContactShareMessage({
+            phoneNumber: nextSharePhone && user?.phoneNumber ? user.phoneNumber : undefined,
+            venmoUsername: nextShareVenmo && user?.venmoUsername ? user.venmoUsername : undefined
+        });
         setSending(true);
         setSendError(null);
         try {
             const response = await sendMessage(conversationId, content);
             setMessages((prev) => [...prev, response.message]);
-            setSharePhone(false);
-            setShareVenmo(false);
         } catch (err) {
             setSendError(err instanceof Error ? err.message : 'Unable to send.');
+            throw err;
         } finally {
             setSending(false);
         }
     }
 
+    async function handleToggleContact(field: 'phone' | 'venmo') {
+        if (sending || conversationClosed) return;
+
+        const canSharePhone = Boolean(user?.phoneNumber);
+        const canShareVenmo = Boolean(user?.venmoUsername);
+
+        if (field === 'phone' && !canSharePhone) return;
+        if (field === 'venmo' && !canShareVenmo) return;
+
+        const nextSharePhone = field === 'phone' ? !sharePhone : sharePhone;
+        const nextShareVenmo = field === 'venmo' ? !shareVenmo : shareVenmo;
+        const previousSharePhone = sharePhone;
+        const previousShareVenmo = shareVenmo;
+
+        setSharePhone(nextSharePhone);
+        setShareVenmo(nextShareVenmo);
+
+        try {
+            await handleShareContact(nextSharePhone, nextShareVenmo);
+        } catch {
+            setSharePhone(previousSharePhone);
+            setShareVenmo(previousShareVenmo);
+        }
+    }
+
     async function handleSend(e: React.FormEvent) {
         e.preventDefault();
-        if (!conversationId || !messageText.trim()) return;
+        if (!conversationId || !messageText.trim() || conversationClosed) return;
         setSending(true);
         setSendError(null);
         try {
@@ -263,7 +388,7 @@ export function ConversationPage() {
     // 2. A plain text message with the full address so it can be copied into Maps/GPS
 
     async function handleLocationConfirmed(encodedMessage: string) {
-        if (!conversationId) return;
+        if (!conversationId || conversationClosed) return;
         setSending(true);
         setSendError(null);
         try {
@@ -330,7 +455,7 @@ export function ConversationPage() {
                                             ${conversation.listingPrice.toFixed(2)}
                                         </span>
                                     </div>
-                                    {conversation.listingId ? (
+                                    {!conversation.isClosed && conversation.listingId ? (
                                         <Link
                                             className="button button-secondary"
                                             to={`/listings/${conversation.listingId}`}
@@ -338,19 +463,27 @@ export function ConversationPage() {
                                             View Listing
                                         </Link>
                                     ) : (
-                                        <span className="conv-listing-deleted">Listing deleted</span>
+                                        <span className="conv-listing-deleted">Listing removed</span>
                                     )}
                                 </div>
+
+                                {conversation.isClosed ? (
+                                    <div className="conv-closed-banner" role="status" aria-live="polite">
+                                        This item has been removed from the marketplace. The conversation is now closed,
+                                        so no new messages can be sent.
+                                    </div>
+                                ) : null}
 
                                 <div
                                     className="conv-messages"
                                     aria-label="Conversation messages"
                                     aria-live="polite"
+                                    ref={messagesContainerRef}
                                 >
-                                    {messages.length === 0 ? (
+                                    {visibleMessages.length === 0 ? (
                                         <p className="conv-no-messages">No messages yet. Say hello!</p>
                                     ) : null}
-                                    {messages.map((msg) => {
+                                    {visibleMessages.map((msg) => {
                                         const isOwn = msg.senderId === user?.id;
                                         return (
                                             <div
@@ -389,14 +522,14 @@ export function ConversationPage() {
                                         type="text"
                                         value={messageText}
                                         onChange={(e) => setMessageText(e.target.value)}
-                                        placeholder="Type a message..."
-                                        disabled={sending}
+                                        placeholder={conversationClosed ? 'This conversation has ended.' : 'Type a message...'}
+                                        disabled={sending || conversationClosed}
                                         maxLength={2000}
                                     />
                                     <button
                                         className="button button-accent"
                                         type="submit"
-                                        disabled={sending || !messageText.trim()}
+                                        disabled={sending || conversationClosed || !messageText.trim()}
                                     >
                                         {sending ? 'Sending...' : 'Send'}
                                     </button>
@@ -405,43 +538,68 @@ export function ConversationPage() {
 
                             <div className="conv-sidebar-stack">
                                 <div className="conv-share-panel">
-                                    <p className="conv-share-panel-title">Share Info</p>
-                                    <label className={`conv-share-option${!user?.phoneNumber ? ' conv-share-option-disabled' : ''}`}>
-                                        <input
-                                            type="checkbox"
-                                            checked={sharePhone}
-                                            onChange={(e) => setSharePhone(e.target.checked)}
-                                            disabled={!user?.phoneNumber || sending}
-                                        />
-                                        Phone Number
-                                        {!user?.phoneNumber ? (
-                                            <span className="conv-share-hint">Add in profile</span>
-                                        ) : null}
-                                    </label>
-                                    <label className={`conv-share-option${!user?.venmoUsername ? ' conv-share-option-disabled' : ''}`}>
-                                        <input
-                                            type="checkbox"
-                                            checked={shareVenmo}
-                                            onChange={(e) => setShareVenmo(e.target.checked)}
-                                            disabled={!user?.venmoUsername || sending}
-                                        />
-                                        Venmo Username
-                                        {!user?.venmoUsername ? (
-                                            <span className="conv-share-hint">Add in profile</span>
-                                        ) : null}
-                                    </label>
-                                    <button
-                                        className="button button-accent"
-                                        type="button"
-                                        disabled={(!sharePhone && !shareVenmo) || sending}
-                                        onClick={() => { void handleShareContact(); }}
-                                    >
-                                        Share Contact/Payment Information
-                                    </button>
+                                    <div className="conv-share-section">
+                                        <p className="conv-share-section-title">Share Your Contact Info</p>
+                                        <button
+                                            type="button"
+                                            className={`conv-share-option${sharePhone ? ' conv-share-option-selected' : ''}${!user?.phoneNumber ? ' conv-share-option-disabled' : ''}`}
+                                            onClick={() => { void handleToggleContact('phone'); }}
+                                            disabled={!user?.phoneNumber || sending || conversationClosed}
+                                        >
+                                            <span className="conv-share-option-copy">
+                                                <span>Phone Number</span>
+                                                <span>{user?.phoneNumber ?? 'Add in profile to share'}</span>
+                                            </span>
+                                            <span className="conv-share-option-status">
+                                                {sharePhone ? 'Shared' : 'Hidden'}
+                                            </span>
+                                        </button>
+                                        <button
+                                            type="button"
+                                            className={`conv-share-option${shareVenmo ? ' conv-share-option-selected' : ''}${!user?.venmoUsername ? ' conv-share-option-disabled' : ''}`}
+                                            onClick={() => { void handleToggleContact('venmo'); }}
+                                            disabled={!user?.venmoUsername || sending || conversationClosed}
+                                        >
+                                            <span className="conv-share-option-copy">
+                                                <span>Venmo Username</span>
+                                                <span>{user?.venmoUsername ? `@${user.venmoUsername}` : 'Add in profile to share'}</span>
+                                            </span>
+                                            <span className="conv-share-option-status">
+                                                {shareVenmo ? 'Shared' : 'Hidden'}
+                                            </span>
+                                        </button>
+                                    </div>
+
+                                    <div className="conv-share-section">
+                                        <p className="conv-share-section-title">{sharedWithYouTitle}</p>
+                                        <div className="conv-share-card-grid">
+                                            <div className="conv-share-card-item">
+                                                <span className="conv-share-card-label">Phone</span>
+                                                <span className="conv-share-card-value">
+                                                    {otherSharedContact?.phoneNumber ?? 'Not shared'}
+                                                </span>
+                                            </div>
+                                            <div className="conv-share-card-item">
+                                                <span className="conv-share-card-label">Venmo</span>
+                                                <span className="conv-share-card-value">
+                                                    {otherSharedContact?.venmoUsername ? `@${otherSharedContact.venmoUsername}` : 'Not shared'}
+                                                </span>
+                                            </div>
+                                        </div>
+                                    </div>
                                 </div>
 
-                                 <div className="conv-meetup-panel">
-                                    <MeetupAreaPicker onLocationConfirmed={handleLocationConfirmed} />
+                                 <div className={`conv-meetup-panel${conversationClosed ? ' conv-meetup-panel-disabled' : ''}`}>
+                                    {conversationClosed ? (
+                                        <p className="conv-meetup-closed-message">
+                                            Meetup suggestions are disabled because this listing has been removed.
+                                        </p>
+                                    ) : (
+                                        <MeetupAreaPicker
+                                            onLocationConfirmed={handleLocationConfirmed}
+                                            currentLocation={currentMeetupLocation}
+                                        />
+                                    )}
                                 </div>
                             </div>
                         </div>

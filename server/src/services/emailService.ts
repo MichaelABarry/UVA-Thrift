@@ -116,6 +116,34 @@ View listing: ${listingUrl}`
     });
 }
 
+export async function sendNewMessageNotificationEmail(
+    toEmail: string,
+    senderName: string,
+    listingName: string,
+    conversationId: string
+) {
+    const conversationUrl = `${env.APP_URL}/messages/${encodeURIComponent(conversationId)}`;
+
+    if (env.NODE_ENV === 'development' && !env.SMTP_PASS) {
+        console.log(`New message notification for ${toEmail}: ${conversationUrl}`);
+        return;
+    }
+
+    const transporter = createTransporter();
+
+    await transporter.sendMail({
+        from: env.SMTP_FROM,
+        to: toEmail,
+        subject: `New message about "${listingName}" on UVA Thrift`,
+        html: `
+            <p>You have a new message on UVA Thrift.</p>
+            <p><strong>${senderName}</strong> has sent you a message about <strong>${listingName}</strong>.</p>
+            <p><a href="${conversationUrl}">View conversation</a></p>
+        `,
+        text: `You have a new message on UVA Thrift.\n\n${senderName} has sent you a message about "${listingName}".\n\nView it here: ${conversationUrl}`,
+    });
+}
+
 export async function sendWatchedListingChangeEmail({ toEmail, changeType, listing }: WatchedListingChangeEmailPayload) {
     const listingUrl = `${env.APP_URL}/listings/${encodeURIComponent(listing.id)}`;
     const subject =

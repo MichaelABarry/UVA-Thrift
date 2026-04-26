@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link, Navigate, useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
-import { getListings } from '../services/listingService';
+import { getListings, reportListing } from '../services/listingService';
 import { addItemToList, getLists as getUserLists } from '../services/listService';
 import type { ItemList } from '../types/list';
 import type { Listing } from '../types/listing';
@@ -29,9 +29,12 @@ export function HomePage() {
     const [error, setError] = useState<string | null>(null);
     const [listError, setListError] = useState<string | null>(null);
     const [listStatus, setListStatus] = useState<string | null>(null);
+    const [reportError, setReportError] = useState<string | null>(null);
+    const [reportStatus, setReportStatus] = useState<string | null>(null);
     const [expandedListPickerId, setExpandedListPickerId] = useState<string | null>(null);
     const [selectedListIds, setSelectedListIds] = useState<Record<string, string[]>>({});
     const [pendingSaveListingId, setPendingSaveListingId] = useState<string | null>(null);
+    const [pendingReportListingId, setPendingReportListingId] = useState<string | null>(null);
 
     useEffect(() => {
         async function loadListings() {
@@ -199,6 +202,41 @@ export function HomePage() {
         }
     }
 
+    async function handleReport(listing: Listing) {
+        const confirmed = window.confirm(
+            `Report ${listing.name}? Once reported, it will be removed from your marketplace feed.`
+        );
+
+        if (!confirmed) {
+            return;
+        }
+
+        setPendingReportListingId(listing.id);
+        setReportError(null);
+        setReportStatus(null);
+
+        try {
+            const response = await reportListing(listing.id);
+
+            setListings((current) => current.filter((currentListing) => currentListing.id !== listing.id));
+            setExpandedListPickerId((current) => (current === listing.id ? null : current));
+            setSelectedListIds((current) => {
+                const nextSelection = { ...current };
+                delete nextSelection[listing.id];
+                return nextSelection;
+            });
+            setReportStatus(
+                response.listingDeleted
+                    ? `${listing.name} reached the report threshold and was removed from the marketplace.`
+                    : `${listing.name} was reported and removed from your marketplace feed.`
+            );
+        } catch (reportListingError) {
+            setReportError(reportListingError instanceof Error ? reportListingError.message : 'Unable to report this listing.');
+        } finally {
+            setPendingReportListingId(null);
+        }
+    }
+
     return (
         <main className="page-content">
             <div className="page-container">
@@ -225,10 +263,12 @@ export function HomePage() {
                 </div>
 
                 {/* Loading / Error */}
-                {loadingListings ? <p className="loading-spinner">Loading listings...</p> : null}
                 {error ? <p className="status status-error">{error}</p> : null}
                 {listError ? <p className="status status-error">{listError}</p> : null}
                 {listStatus ? <p className="status status-success">{listStatus}</p> : null}
+                {reportError ? <p className="status status-error">{reportError}</p> : null}
+                {reportStatus ? <p className="status status-success">{reportStatus}</p> : null}
+                {loadingListings ? <p className="loading-spinner">Loading listings...</p> : null}
 
                 {/* Empty state */}
                 {!loadingListings && !error && !hasListings ? (
@@ -374,6 +414,22 @@ export function HomePage() {
                                             }
                                         }}
                                     >
+                                        {user?.id !== listing.userId ? (
+                                            <button
+                                                className="button listing-report-button"
+                                                type="button"
+                                                title="Report this listing — e.g. spam, counterfeit items, prohibited content, or inappropriate material"
+                                                aria-label={`Report ${listing.name}`}
+                                                onClick={(event) => {
+                                                    event.stopPropagation();
+                                                    void handleReport(listing);
+                                                }}
+                                                disabled={pendingReportListingId === listing.id}
+                                            >
+                                                !
+                                            </button>
+                                        ) : null}
+
                                         <button
                                             className="button listing-add-button"
                                             type="button"

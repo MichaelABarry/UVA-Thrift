@@ -7,6 +7,7 @@ import {
     getListings,
     getMyListing,
     getMyListings,
+    reportListing,
     updateListing
 } from './listingService';
 
@@ -120,6 +121,16 @@ describe('listingService', () => {
         expect(mockedApiFetch).toHaveBeenCalledWith('/api/listings/listing-1', {
             method: 'DELETE',
             expectedStatus: 204
+        });
+    });
+
+    it('reports a listing with a PUT request', async () => {
+        mockedApiFetch.mockResolvedValue({ listingDeleted: false } as never);
+
+        await reportListing('listing-1');
+
+        expect(mockedApiFetch).toHaveBeenCalledWith('/api/listings/listing-1/report', {
+            method: 'PUT'
         });
     });
 });
