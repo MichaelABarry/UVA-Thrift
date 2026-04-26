@@ -2,7 +2,7 @@
 
 UVA Thrift is a marketplace specifically designed for college students with the goal of reducing end of year
 waste. Every year, students graduate, move, or otherwise have reason to throw away items that they own (furniture,
-clothing, school supplies, etc.) At the same, other students are beginning their college career, and others still
+clothing, school supplies, etc.) At the same time, other students are beginning their college career, and others still
 are in need of furniture, clothing, school supplies, etc. While some students make the effort to donate or sell their
 belongings, it is our opinion that the existing infrastructure for facilitating these processes is not sufficient, and
 leads the majoirty of students to take the easy way out, turning to disposal rather than recycling. UVA Thrift aims
@@ -152,6 +152,8 @@ Here are a few things you can do in the app:
 8. On the messages page, you can view any conversations you are having with other users. The messages page will also display notifications for in-app processes. Click on a thread to chat with the owner of an item, share contact information, and suggest an exchange location.
 9. Click on the HoosReUse tab in the navigation bar to view information about the HoosReUse initiative and find more information on their website.
 10. When creating an item listing, you can set an "expiration window" such that you will be prompted to donate your item through HoosReUse if it does not sell on UVA Thrift within that window.
+
+---
 
 # Sources
 We used ChatGPT and Claude for much of the UI styling, as well as implementing some of the more complex backend features (like authentication).
