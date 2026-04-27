@@ -5,7 +5,7 @@ import { LISTING_CATEGORY_OPTIONS } from '../constants/listingCategories';
 import { useAuth } from '../hooks/useAuth';
 import { createList, deleteList, getLists, removeItemFromList, updateList } from '../services/listService';
 import { deleteAccount, logout, updateProfile } from '../services/authService';
-import { deleteListing, getMyListings } from '../services/listingService';
+import { deleteListing, extendListing, getMyListings } from '../services/listingService';
 import { deleteListingWatch, getWatchedListings } from '../services/listingWatchService';
 import {
     createNotificationPreference,
@@ -87,6 +87,8 @@ export function ProfilePage() {
     const [pendingAlertDeleteId, setPendingAlertDeleteId] = useState<string | null>(null);
     const [pendingWatchDeleteId, setPendingWatchDeleteId] = useState<string | null>(null);
     const [pendingListingDeleteId, setPendingListingDeleteId] = useState<string | null>(null);
+    const [pendingListingExtendId, setPendingListingExtendId] = useState<string | null>(null);
+    const [extensionDaysMap, setExtensionDaysMap] = useState<Record<string, number>>({});
     const [pendingListDeleteId, setPendingListDeleteId] = useState<string | null>(null);
     const [pendingListRemoveId, setPendingListRemoveId] = useState<string | null>(null);
 
@@ -505,6 +507,45 @@ export function ProfilePage() {
         }
     }
 
+    function getDaysUntilExpiry(expiresAt: string): number {
+        return Math.ceil((new Date(expiresAt).getTime() - Date.now()) / (1000 * 60 * 60 * 24));
+    }
+
+    const expiredListings = listings.filter((l) => l.expiresAt && getDaysUntilExpiry(l.expiresAt) <= 0);
+    const activeListings = listings.filter((l) => !l.expiresAt || getDaysUntilExpiry(l.expiresAt) > 0);
+
+    async function handleExtendListing(listingId: string) {
+        const days = extensionDaysMap[listingId] ?? 30;
+        setPendingListingExtendId(listingId);
+        setItemsError(null);
+        try {
+            const response = await extendListing(listingId, days);
+            setListings((current) =>
+                current.map((l) => (l.id === listingId ? response.listing : l))
+            );
+        } catch (err) {
+            setItemsError(err instanceof Error ? err.message : 'Unable to extend listing.');
+        } finally {
+            setPendingListingExtendId(null);
+        }
+    }
+
+    async function handleDeleteListingWithRedirect(listingId: string, donateRedirect: boolean) {
+        setPendingListingDeleteId(listingId);
+        setItemsError(null);
+        try {
+            await deleteListing(listingId);
+            setListings((current) => current.filter((l) => l.id !== listingId));
+            if (donateRedirect) {
+                window.location.href = '/hoos-reuse';
+            }
+        } catch (deleteError) {
+            setItemsError(deleteError instanceof Error ? deleteError.message : 'Unable to delete listing.');
+        } finally {
+            setPendingListingDeleteId(null);
+        }
+    }
+
     return (
         <main className="page-content">
             <div className="page-container profile-workspace">
@@ -657,7 +698,6 @@ export function ProfilePage() {
 
                             {!loadingListings && !itemsError && !listings.length ? (
                                 <div className="card profile-panel-card empty-state my-items-empty-state">
-
                                     <h2 className="empty-state-title">You have not listed anything yet</h2>
                                     <p className="empty-state-body">
                                         Start with one item, then come back here anytime to edit or remove it.
@@ -665,54 +705,161 @@ export function ProfilePage() {
                                 </div>
                             ) : null}
 
-                            {!loadingListings && listings.length ? (
-                                <div className="listing-grid" aria-label="Your uploaded items">
-                                    {listings.map((listing) => (
-                                        <article className="listing-card" key={listing.id}>
-                                            {listing.imageUrl ? (
-                                                <div className="listing-image-frame">
-                                                    <img className="listing-image" src={listing.imageUrl} alt={listing.name} />
+                            {/* ── Needs Attention: expired listings ── */}
+                            {!loadingListings && expiredListings.length > 0 ? (
+                                <div className="myitems-expired-section">
+                                    <div className="myitems-expired-heading">
+                                        <span>⏰</span>
+                                        <h3 className="myitems-expired-title">
+                                            Needs Attention ({expiredListings.length} expired)
+                                        </h3>
+                                    </div>
+                                    <p className="myitems-expired-subtitle">
+                                        These listings are no longer visible to other students. Relist or remove them.
+                                    </p>
+
+                                    <div className="listing-grid">
+                                        {expiredListings.map((listing) => (
+                                            <article className="listing-card myitems-expired-card" key={listing.id}>
+                                                {listing.imageUrl ? (
+                                                    <div className="listing-image-frame">
+                                                        <img className="listing-image" src={listing.imageUrl} alt={listing.name} />
+                                                    </div>
+                                                ) : (
+                                                    <div className="listing-image-placeholder">No image</div>
+                                                )}
+
+                                                <div className="listing-header">
+                                                    <h3 className="listing-title">{listing.name}</h3>
+                                                    <p className="listing-price">${listing.price.toFixed(2)}</p>
                                                 </div>
-                                            ) : (
-                                                <div className="listing-image-placeholder">No image</div>
-                                            )}
 
-                                            <div className="listing-header">
-                                                <h3 className="listing-title">{listing.name}</h3>
-                                                <p className="listing-price">${listing.price.toFixed(2)}</p>
-                                            </div>
+                                                <span className="listing-expiry-chip listing-expiry-chip--expired" style={{ margin: '0 0.75rem 0.5rem' }}>
+                                                    ⏰ Expired {listing.expiresAt ? formatDate(listing.expiresAt) : ''}
+                                                </span>
 
-                                            <p className="listing-description">{listing.description}</p>
-
-                                            <div className="listing-footer">
-                                                <div className="listing-categories">
-                                                    {listing.categories.map((category) => (
-                                                        <span className="listing-category-chip" key={`${listing.id}-${category}`}>
-                                                            {category}
-                                                        </span>
-                                                    ))}
+                                                {/* Relist picker */}
+                                                <div className="myitems-relist-block">
+                                                    <p className="myitems-relist-label">Relist for:</p>
+                                                    <div className="myitems-relist-days">
+                                                        {[15, 30, 60].map((days) => (
+                                                            <label
+                                                                key={days}
+                                                                className={`myitems-day-option${(extensionDaysMap[listing.id] ?? 30) === days ? ' myitems-day-option--selected' : ''}`}
+                                                            >
+                                                                <input
+                                                                    type="radio"
+                                                                    name={`ext-${listing.id}`}
+                                                                    value={days}
+                                                                    checked={(extensionDaysMap[listing.id] ?? 30) === days}
+                                                                    onChange={() => setExtensionDaysMap((m) => ({ ...m, [listing.id]: days }))}
+                                                                    style={{ display: 'none' }}
+                                                                    disabled={pendingListingExtendId === listing.id || pendingListingDeleteId === listing.id}
+                                                                />
+                                                                {days}d
+                                                            </label>
+                                                        ))}
+                                                    </div>
+                                                    <button
+                                                        className="button button-accent myitems-relist-btn"
+                                                        type="button"
+                                                        onClick={() => { void handleExtendListing(listing.id); }}
+                                                        disabled={pendingListingExtendId === listing.id || pendingListingDeleteId === listing.id}
+                                                    >
+                                                        {pendingListingExtendId === listing.id ? 'Relisting…' : 'Relist'}
+                                                    </button>
                                                 </div>
-                                                <span className="listing-date">{formatDate(listing.createdAt)}</span>
-                                            </div>
 
-                                            <div className="listing-actions">
-                                                <Link className="button button-secondary listing-action-button" to={`/listings/${listing.id}/edit`}>
-                                                    Edit
-                                                </Link>
-                                                <button
-                                                    className="button listing-action-button listing-delete-button"
-                                                    type="button"
-                                                    onClick={() => {
-                                                        void handleDeleteListing(listing.id);
-                                                    }}
-                                                    disabled={pendingListingDeleteId === listing.id}
-                                                >
-                                                    {pendingListingDeleteId === listing.id ? 'Deleting...' : 'Delete'}
-                                                </button>
-                                            </div>
-                                        </article>
-                                    ))}
+                                                {/* Delete options */}
+                                                <div className="myitems-delete-row">
+                                                    <button
+                                                        className="button myitems-donate-btn"
+                                                        type="button"
+                                                        onClick={() => { void handleDeleteListingWithRedirect(listing.id, true); }}
+                                                        disabled={pendingListingDeleteId === listing.id || pendingListingExtendId === listing.id}
+                                                    >
+                                                        ♻️ Delete & Donate
+                                                    </button>
+                                                    <button
+                                                        className="button button-secondary myitems-delete-only-btn"
+                                                        type="button"
+                                                        onClick={() => { void handleDeleteListingWithRedirect(listing.id, false); }}
+                                                        disabled={pendingListingDeleteId === listing.id || pendingListingExtendId === listing.id}
+                                                    >
+                                                        {pendingListingDeleteId === listing.id ? 'Deleting…' : 'Delete Only'}
+                                                    </button>
+                                                </div>
+                                            </article>
+                                        ))}
+                                    </div>
                                 </div>
+                            ) : null}
+
+                            {/* ── Active listings ── */}
+                            {!loadingListings && activeListings.length > 0 ? (
+                                <>
+                                    {expiredListings.length > 0 ? (
+                                        <h3 className="myitems-active-heading">Active Listings</h3>
+                                    ) : null}
+                                    <div className="listing-grid" aria-label="Your uploaded items">
+                                        {activeListings.map((listing) => (
+                                            <article className="listing-card" key={listing.id}>
+                                                {listing.imageUrl ? (
+                                                    <div className="listing-image-frame">
+                                                        <img className="listing-image" src={listing.imageUrl} alt={listing.name} />
+                                                    </div>
+                                                ) : (
+                                                    <div className="listing-image-placeholder">No image</div>
+                                                )}
+
+                                                <div className="listing-header">
+                                                    <h3 className="listing-title">{listing.name}</h3>
+                                                    <p className="listing-price">${listing.price.toFixed(2)}</p>
+                                                </div>
+
+                                                <p className="listing-description">{listing.description}</p>
+
+                                                <div className="listing-footer">
+                                                    <div className="listing-categories">
+                                                        {listing.categories.map((category) => (
+                                                            <span className="listing-category-chip" key={`${listing.id}-${category}`}>
+                                                                {category}
+                                                            </span>
+                                                        ))}
+                                                    </div>
+                                                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '0.2rem' }}>
+                                                        <span className="listing-date">{formatDate(listing.createdAt)}</span>
+                                                        {listing.expiresAt ? (() => {
+                                                            const days = getDaysUntilExpiry(listing.expiresAt);
+                                                            if (days <= 5) return (
+                                                                <span className="listing-expiry-chip listing-expiry-chip--soon">⚠️ {days}d left</span>
+                                                            );
+                                                            return (
+                                                                <span className="listing-expiry-chip listing-expiry-chip--ok">⏳ {days}d left</span>
+                                                            );
+                                                        })() : null}
+                                                    </div>
+                                                </div>
+
+                                                <div className="listing-actions">
+                                                    <Link className="button button-secondary listing-action-button" to={`/listings/${listing.id}/edit`}>
+                                                        Edit
+                                                    </Link>
+                                                    <button
+                                                        className="button listing-action-button listing-delete-button"
+                                                        type="button"
+                                                        onClick={() => {
+                                                            void handleDeleteListing(listing.id);
+                                                        }}
+                                                        disabled={pendingListingDeleteId === listing.id}
+                                                    >
+                                                        {pendingListingDeleteId === listing.id ? 'Deleting...' : 'Delete'}
+                                                    </button>
+                                                </div>
+                                            </article>
+                                        ))}
+                                    </div>
+                                </>
                             ) : null}
                         </section>
                     ) : null}

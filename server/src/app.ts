@@ -11,6 +11,7 @@ import { listingRouter } from './routes/listingRoutes';
 import { listingWatchRouter } from './routes/listingWatchRoutes';
 import { conversationRouter } from './routes/conversationRoutes';
 import { notificationPreferenceRouter } from './routes/notificationPreferenceRoutes';
+import { systemNotificationRouter } from './routes/systemNotificationRoutes';
 import { errorMiddleware } from './middleware/errorMiddleware';
 
 //UVA Thrift - Updated
@@ -39,6 +40,8 @@ export function createApp() {
     app.use('/api/listing-watches', listingWatchRouter);
     app.use('/api/conversations', conversationRouter);
     app.use('/api/notification-preferences', notificationPreferenceRouter);
+	app.use('/api/system-notifications', systemNotificationRouter);
+	
 
     // In production, serve the React frontend from the 'client/dist' directory. 
     // It checks multiple candidate paths to locate the client build output directory, ensuring compatibility with different project structures. 

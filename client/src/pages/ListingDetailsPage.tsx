@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
-import { Navigate, useNavigate, useParams } from 'react-router-dom';
+import { Link, Navigate, useNavigate, useParams } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
-import { getListingDetails } from '../services/listingService';
+import { deleteListing, extendListing, getListingDetails } from '../services/listingService';
 import {
     createListingWatch,
     deleteListingWatch,
@@ -13,6 +13,18 @@ import type { Listing } from '../types/listing';
 function formatDate(iso: string): string {
     return new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
 }
+
+function getDaysUntilExpiry(expiresAt: string): number {
+    const now = new Date();
+    const expiry = new Date(expiresAt);
+    return Math.ceil((expiry.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+}
+
+const EXTENSION_OPTIONS = [
+    { value: 15, label: '15 days' },
+    { value: 30, label: '30 days' },
+    { value: 60, label: '60 days' },
+];
 
 export function ListingDetailsPage() {
     const { user, loading } = useAuth();
@@ -28,6 +40,11 @@ export function ListingDetailsPage() {
     const [messageText, setMessageText] = useState('');
     const [error, setError] = useState<string | null>(null);
     const [statusMessage, setStatusMessage] = useState<string | null>(null);
+
+	// Relist / extend state
+    const [extensionDays, setExtensionDays] = useState(30);
+    const [extending, setExtending] = useState(false);
+    const [deleting, setDeleting] = useState(false);
 
     useEffect(() => {
         async function loadListing() {
@@ -48,7 +65,6 @@ export function ListingDetailsPage() {
                 setLoadingListing(false);
             }
         }
-
         void loadListing();
     }, [listingId, user?.isEmailVerified]);
 
@@ -58,9 +74,7 @@ export function ListingDetailsPage() {
                 setLoadingWatchState(false);
                 return;
             }
-
             setLoadingWatchState(true);
-
             try {
                 const response = await getListingWatchStatus(listingId);
                 setWatching(response.isWatching);
@@ -79,9 +93,7 @@ export function ListingDetailsPage() {
     }
 
     async function handleWatchToggle() {
-        if (!listing) {
-            return;
-        }
+        if (!listing) return;
 
         setWatchSubmitting(true);
         setError(null);
@@ -125,6 +137,45 @@ export function ListingDetailsPage() {
         }
     }
 
+	async function handleExtend() {
+        if (!listing) return;
+        setExtending(true);
+        setError(null);
+        try {
+            const response = await extendListing(listing.id, extensionDays);
+            setListing(response.listing);
+            setStatusMessage(`✅ Your listing has been relisted for another ${extensionDays} days!`);
+        } catch (err) {
+            setError(err instanceof Error ? err.message : 'Unable to extend listing.');
+        } finally {
+            setExtending(false);
+        }
+    }
+
+    async function handleDelete(redirectToHoosReuse: boolean) {
+        if (!listing) return;
+        setDeleting(true);
+        setError(null);
+        try {
+            await deleteListing(listing.id);
+            if (redirectToHoosReuse) {
+                void navigate('/hoos-reuse');
+            } else {
+                void navigate('/profile?section=items');
+            }
+        } catch (err) {
+            setError(err instanceof Error ? err.message : 'Unable to delete listing.');
+            setDeleting(false);
+        }
+    }
+
+    const isOwnListing = listing ? user?.id === listing.userId : false;
+
+	const daysLeft = listing?.expiresAt ? getDaysUntilExpiry(listing.expiresAt) : null;
+    const isExpired = daysLeft !== null && daysLeft <= 0;
+    const isExpiringSoon = daysLeft !== null && daysLeft > 0 && daysLeft <= 5;
+    
+
     return (
         <main className="page-content">
             <div className="page-container listing-details-shell">
@@ -137,6 +188,98 @@ export function ListingDetailsPage() {
                 {loadingListing ? <p className="loading-spinner">Loading listing details...</p> : null}
                 {error ? <p className="status status-error">{error}</p> : null}
                 {statusMessage ? <p className="status status-success">{statusMessage}</p> : null}
+
+                {/* ── Expired prompt (own listing only) ── */}
+                {listing && isExpired && isOwnListing ? (
+                    <div className="relist-prompt">
+                        <div className="relist-prompt-header">
+                            <span className="relist-prompt-icon">⏰</span>
+                            <div>
+                                <p className="relist-prompt-title">This listing has expired</p>
+                                <p className="relist-prompt-subtitle">
+                                    Nobody grabbed it yet. Would you like to relist it or remove it?
+                                </p>
+                            </div>
+                        </div>
+
+                        <div className="relist-prompt-body">
+                            {/* Relist section */}
+                            <div className="relist-section">
+                                <p className="relist-section-label">Relist for how long?</p>
+                                <div className="relist-days-options">
+                                    {EXTENSION_OPTIONS.map((opt) => (
+                                        <label
+                                            key={opt.value}
+                                            className={`relist-day-option${extensionDays === opt.value ? ' relist-day-option--selected' : ''}`}
+                                        >
+                                            <input
+                                                type="radio"
+                                                name="extensionDays"
+                                                value={opt.value}
+                                                checked={extensionDays === opt.value}
+                                                onChange={() => setExtensionDays(opt.value)}
+                                                style={{ display: 'none' }}
+                                                disabled={extending || deleting}
+                                            />
+                                            <span className="relist-day-num">{opt.value}</span>
+                                            <span className="relist-day-unit">days</span>
+                                        </label>
+                                    ))}
+                                </div>
+                                <button
+                                    type="button"
+                                    className="button button-accent relist-btn"
+                                    onClick={handleExtend}
+                                    disabled={extending || deleting}
+                                >
+                                    {extending ? 'Relisting…' : `Relist for ${extensionDays} days`}
+                                </button>
+                            </div>
+
+                            {/* Divider */}
+                            <div className="relist-divider">
+                                <span>or</span>
+                            </div>
+
+                            {/* Delete section */}
+                            <div className="relist-delete-section">
+                                <p className="relist-section-label">Remove this listing</p>
+                                <p className="relist-delete-hint">
+                                    If you're done with the item, consider donating it through Hoos ReUse instead of throwing it away.
+                                </p>
+                                <div className="relist-delete-actions">
+                                    <button
+                                        type="button"
+                                        className="button relist-donate-btn"
+                                        onClick={() => void handleDelete(true)}
+                                        disabled={extending || deleting}
+                                    >
+                                        {deleting ? 'Deleting…' : '♻️ Delete & Donate via Hoos ReUse'}
+                                    </button>
+                                    <button
+                                        type="button"
+                                        className="button button-secondary"
+                                        onClick={() => void handleDelete(false)}
+                                        disabled={extending || deleting}
+                                    >
+                                        Delete Only
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                ) : null}
+
+                {/* Expiring soon warning (own listing only) */}
+                {listing && isExpiringSoon && isOwnListing ? (
+                    <div className="expiry-banner expiry-banner--soon">
+						<span className="expiry-banner-text">
+                        <strong>⚠️ Expiring in {daysLeft} day{daysLeft === 1 ? '' : 's'}.</strong>{' '}
+                        If it doesn't sell, consider donating via{' '}
+                        <Link to="/hoos-reuse" className="expiry-banner-inline-link">Hoos ReUse</Link>.
+						</span>
+                    </div>
+                ) : null}
 
                 {listing && !loadingListing ? (
                     <article className="listing-details-card">
@@ -155,6 +298,15 @@ export function ListingDetailsPage() {
                             </div>
 
                             <p className="listing-details-date">Listed {formatDate(listing.createdAt)}</p>
+
+							{/* Expiry date — only shown to owner */}
+                            {listing.expiresAt && isOwnListing ? (
+                                <p className={`listing-expiry-date${isExpired ? ' listing-expiry-date--expired' : isExpiringSoon ? ' listing-expiry-date--soon' : ''}`}>
+                                    {isExpired
+                                        ? `⏰ Expired ${formatDate(listing.expiresAt)}`
+                                        : `⏳ Expires ${formatDate(listing.expiresAt)}${isExpiringSoon ? ` (${daysLeft} day${daysLeft === 1 ? '' : 's'} left)` : ''}`}
+                                </p>
+                            ) : null}
 
                             <div className="listing-categories listing-details-categories">
                                 {listing.categories.map((category) => (

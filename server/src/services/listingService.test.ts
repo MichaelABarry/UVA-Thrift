@@ -64,6 +64,7 @@ function makeListingRecord(overrides: Partial<{
     updated_at: string;
     deleted_at: string | null;
     is_reported: boolean;
+	expires_at: string;
 }> = {}) {
     return {
         id: 'listing-1',
@@ -79,6 +80,7 @@ function makeListingRecord(overrides: Partial<{
         updated_at: '2026-03-15T12:00:00.000Z',
         deleted_at: null,
         is_reported: false,
+		expires_at: '2026-06-15T12:00:00.000Z',
         ...overrides
     };
 }
@@ -144,7 +146,8 @@ describe('server listingService', () => {
             condition: 'good',
             categories: ['electronics', 'other'],
             imageKey: 'listings/lamp.png',
-            imageUrl: 'https://bucket.s3.amazonaws.com/listings/lamp.png'
+            imageUrl: 'https://bucket.s3.amazonaws.com/listings/lamp.png',
+			expiresAt: expect.any(Date)
         });
         expect(mockedNotifyUsersAboutNewListing).toHaveBeenCalledWith({
             id: 'listing-1',
@@ -156,6 +159,7 @@ describe('server listingService', () => {
             categories: ['electronics', 'other'],
             imageUrl: 'https://bucket.s3.amazonaws.com/listings/lamp.png',
             createdAt: '2026-03-15T12:00:00.000Z',
+			expiresAt: '2026-06-15T12:00:00.000Z',
             isReported: false
         });
         expect(result).toEqual({
@@ -168,6 +172,7 @@ describe('server listingService', () => {
             categories: ['electronics', 'other'],
             imageUrl: 'https://bucket.s3.amazonaws.com/listings/lamp.png',
             createdAt: '2026-03-15T12:00:00.000Z',
+			expiresAt: '2026-06-15T12:00:00.000Z',
             isReported: false
         });
     });
@@ -193,6 +198,7 @@ describe('server listingService', () => {
                 categories: ['electronics'],
                 imageUrl: null,
                 createdAt: '2026-03-15T12:00:00.000Z',
+				expiresAt: '2026-06-15T12:00:00.000Z',
                 isReported: false
             },
             {
@@ -205,6 +211,7 @@ describe('server listingService', () => {
                 categories: ['furniture'],
                 imageUrl: null,
                 createdAt: '2026-03-15T12:00:00.000Z',
+				expiresAt: '2026-06-15T12:00:00.000Z',
                 isReported: false
             }
         ]);
@@ -292,6 +299,7 @@ describe('server listingService', () => {
             categories: ['electronics', 'other'],
             imageUrl: 'https://bucket.s3.amazonaws.com/listings/new.png',
             createdAt: '2026-03-15T12:00:00.000Z',
+			expiresAt: '2026-06-15T12:00:00.000Z',
             isReported: false
         });
 
@@ -316,6 +324,7 @@ describe('server listingService', () => {
             categories: ['electronics', 'other'],
             imageUrl: 'https://bucket.s3.amazonaws.com/listings/new.png',
             createdAt: '2026-03-15T12:00:00.000Z',
+			expiresAt: '2026-06-15T12:00:00.000Z',
             isReported: false
         }, 'user-1');
         expect(mockedDeleteListingImage).toHaveBeenCalledWith('listings/old.png');
@@ -352,6 +361,7 @@ describe('server listingService', () => {
             categories: ['electronics'],
             imageUrl: 'https://bucket.s3.amazonaws.com/listings/lamp.png',
             createdAt: '2026-03-15T12:00:00.000Z',
+			expiresAt: '2026-06-15T12:00:00.000Z',
             isReported: false
         }, 'user-1');
         expect(mockedDeleteListingImage).toHaveBeenCalledWith('listings/lamp.png');
@@ -405,6 +415,7 @@ describe('server listingService', () => {
             categories: ['electronics'],
             imageUrl: null,
             createdAt: '2026-03-15T12:00:00.000Z',
+			expiresAt: '2026-06-15T12:00:00.000Z',
             isReported: false
         }, 'user-3');
         expect(mockedDeleteListingImage).toHaveBeenCalledWith('listings/lamp.png');

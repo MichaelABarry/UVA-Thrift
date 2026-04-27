@@ -185,3 +185,35 @@ Categories: ${listing.categories.join(', ')}
 ${linkText}`.trim()
     });
 }
+
+export async function sendListingExpiredEmail(toEmail: string, listing: { id: string; name: string }) {
+    const listingUrl = `${env.APP_URL}/listings/${encodeURIComponent(listing.id)}`;
+    const hoosReuseUrl = 'https://sustainability.virginia.edu/hoos-reuse';
+
+    if (env.NODE_ENV === 'development' && !env.SMTP_PASS) {
+        console.log(`Listing expired notification for ${toEmail}: ${listing.name}`);
+        return;
+    }
+
+    const transporter = createTransporter();
+
+    await transporter.sendMail({
+        from: env.SMTP_FROM,
+        to: toEmail,
+        subject: `Your UVA Thrift listing has expired: ${listing.name}`,
+        html: `
+            <p>Hi there,</p>
+            <p>Your listing <strong>${listing.name}</strong> on UVA Thrift has expired and is no longer visible to other students.</p>
+            <p>If it didn't sell, please consider donating it through <strong>Hoos ReUse</strong> instead of throwing it away. Donated items go to Goodwill Industries of the Valleys and the Charlottesville-Albemarle SPCA. They stay local and support our community.</p>
+            <p>
+                <a href="${hoosReuseUrl}" style="background:#E57200;color:#fff;padding:10px 20px;border-radius:6px;text-decoration:none;font-weight:bold;">
+                    Learn about Hoos ReUse ↗
+                </a>
+            </p>
+            <p>You can also re-list the item on UVA Thrift if you'd like to try again:</p>
+            <p><a href="${listingUrl}">View your listing</a></p>
+            <p>— The UVA Thrift Team</p>
+        `,
+        text: `Your listing "${listing.name}" on UVA Thrift has expired.\n\nConsider donating it through Hoos ReUse: ${hoosReuseUrl}\n\nOr view your listing: ${listingUrl}`,
+    });
+}

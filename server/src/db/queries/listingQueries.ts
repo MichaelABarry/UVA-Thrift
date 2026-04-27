@@ -13,6 +13,7 @@ export type ListingRecord = {
     created_at: string;
     updated_at: string;
     deleted_at: string | null;
+	expires_at: string;
     is_reported?: boolean;
 };
 
@@ -25,12 +26,13 @@ export async function createListing(input: {
     condition: string;
     imageUrl: string | null;
     imageKey: string | null;
+	expiresAt: Date;
 }) {
     const result = await pool.query<ListingRecord>(
-        `INSERT INTO listings (user_id, name, description, price_cents, categories, condition, image_url, image_key)
-        VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+        `INSERT INTO listings (user_id, name, description, price_cents, categories, condition, image_url, image_key, expires_at)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
         RETURNING *`,
-        [input.userId, input.name, input.description, input.priceCents, input.categories, input.condition, input.imageUrl, input.imageKey]
+        [input.userId, input.name, input.description, input.priceCents, input.categories, input.condition, input.imageUrl, input.imageKey, input.expiresAt]
     );
 
     return result.rows[0];
@@ -160,3 +162,22 @@ export async function deleteListingById(listingId: string, userId: string) {
 
     return result.rows[0] ?? null;
 }
+
+export async function extendListingById(input: {
+    listingId: string;
+    userId: string;
+    extensionDays: number;
+}): Promise<ListingRecord | null> {
+    const result = await pool.query<ListingRecord>(
+        `UPDATE listings
+         SET expires_at = NOW() + ($3 || ' days')::INTERVAL,
+             expiry_notified_at = NULL,
+             updated_at = NOW()
+         WHERE id = $1 AND user_id = $2
+           AND deleted_at IS NULL
+         RETURNING *`,
+        [input.listingId, input.userId, input.extensionDays]
+    );
+    return result.rows[0] ?? null;
+}
+
