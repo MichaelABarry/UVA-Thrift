@@ -8,6 +8,7 @@ export type Listing = {
     condition: string;
     imageUrl: string | null;
     createdAt: string;
+	expiresAt: string;
     isReported: boolean;
 };
 
@@ -17,6 +18,7 @@ export type CreateListingPayload = {
     price: number;
     categories: string[];
     condition: string;
+	expirationDays: number;
     image?: File | null;
 };
 

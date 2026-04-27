@@ -2,6 +2,7 @@ import { Router } from 'express';
 import {
 	createListing,
 	deleteMyListing,
+	extendMyListing,
 	getListingDetails,
 	getMyListing,
 	listListings,
@@ -23,3 +24,4 @@ listingRouter.put('/:listingId/report', asyncHandler(requireVerifiedEmail), asyn
 listingRouter.get('/:listingId', asyncHandler(requireVerifiedEmail), asyncHandler(getMyListing));
 listingRouter.put('/:listingId', asyncHandler(requireVerifiedEmail), uploadListingImage, asyncHandler(updateMyListing));
 listingRouter.delete('/:listingId', asyncHandler(requireVerifiedEmail), asyncHandler(deleteMyListing));
+listingRouter.put('/:listingId/extend', asyncHandler(requireVerifiedEmail), asyncHandler(extendMyListing));
