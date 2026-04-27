@@ -3953,3 +3953,318 @@ textarea.cl-input {
         grid-template-columns: 1fr;
     }
 }
+
+/*Relist / Expired prompt (Listing Details page)*/
+
+.relist-prompt {
+    background: #fef2f2;
+    border: 1px solid #fecaca;
+    border-radius: var(--radius-lg);
+    padding: 1.5rem;
+    margin-bottom: 1.25rem;
+}
+
+.relist-prompt-header {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.85rem;
+    margin-bottom: 1.25rem;
+}
+
+.relist-prompt-icon {
+    font-size: 1.8rem;
+    flex-shrink: 0;
+    line-height: 1;
+}
+
+.relist-prompt-title {
+    margin: 0 0 0.2rem;
+    font-size: 1rem;
+    font-weight: 700;
+    color: var(--error-text);
+}
+
+.relist-prompt-subtitle {
+    margin: 0;
+    font-size: 0.88rem;
+    color: var(--text-secondary);
+    line-height: 1.5;
+}
+
+.relist-prompt-body {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.relist-section {
+    display: flex;
+    flex-direction: column;
+    gap: 0.65rem;
+}
+
+.relist-section-label {
+    margin: 0;
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--text);
+}
+
+/* Day picker */
+.relist-days-options {
+    display: flex;
+    gap: 0.6rem;
+}
+
+.relist-day-option {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.1rem;
+    padding: 0.6rem 0.4rem;
+    border: 2px solid var(--border);
+    border-radius: var(--radius);
+    background: var(--bg-card);
+    cursor: pointer;
+    transition: border-color var(--transition), background var(--transition);
+    text-align: center;
+}
+
+.relist-day-option:hover {
+    border-color: var(--navy);
+    background: #f5f7fc;
+}
+
+.relist-day-option--selected {
+    border-color: var(--navy);
+    background: #eef1f9;
+}
+
+.relist-day-num {
+    font-size: 1.3rem;
+    font-weight: 800;
+    color: var(--navy);
+    line-height: 1;
+}
+
+.relist-day-unit {
+    font-size: 0.72rem;
+    font-weight: 500;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+}
+
+.relist-btn {
+    align-self: flex-start;
+    padding: 0.65rem 1.25rem;
+}
+
+/* Divider */
+.relist-divider {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    color: var(--text-muted);
+    font-size: 0.82rem;
+}
+
+.relist-divider::before,
+.relist-divider::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: var(--border);
+}
+
+/* Delete section */
+.relist-delete-section {
+    display: flex;
+    flex-direction: column;
+    gap: 0.6rem;
+}
+
+.relist-delete-hint {
+    margin: 0;
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+    line-height: 1.5;
+}
+
+.relist-delete-actions {
+    display: flex;
+    gap: 0.65rem;
+    flex-wrap: wrap;
+}
+
+.relist-donate-btn {
+    background: var(--orange);
+    color: #fff;
+    font-weight: 600;
+}
+
+.relist-donate-btn:hover:not(:disabled) {
+    background: var(--orange-light);
+}
+
+@media (max-width: 500px) {
+    .relist-days-options {
+        gap: 0.4rem;
+    }
+
+    .relist-delete-actions {
+        flex-direction: column;
+    }
+}
+
+/* TopNav expiry badg */
+
+.nav-expiry-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.15rem;
+    background: var(--orange);
+    color: #fff;
+    font-size: 0.68rem;
+    font-weight: 700;
+    padding: 0.1rem 0.4rem;
+    border-radius: 99px;
+    margin-left: 0.35rem;
+    vertical-align: middle;
+    line-height: 1.4;
+    white-space: nowrap;
+}
+
+/* My Items — Needs Attention section */
+
+.myitems-expired-section {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    padding: 1.25rem;
+    background: #fef2f2;
+    border: 1px solid #fecaca;
+    border-radius: var(--radius-lg);
+}
+
+.myitems-expired-heading {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 1.1rem;
+}
+
+.myitems-expired-title {
+    margin: 0;
+    font-size: 1rem;
+    font-weight: 700;
+    color: var(--error-text);
+}
+
+.myitems-expired-subtitle {
+    margin: 0;
+    font-size: 0.87rem;
+    color: var(--text-secondary);
+    line-height: 1.5;
+}
+
+/* Expired listing card override */
+.myitems-expired-card {
+    border-color: #fecaca !important;
+    background: #fff5f5;
+}
+
+/* Relist block inside the card */
+.myitems-relist-block {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.6rem 0.75rem;
+    background: #fff;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    margin: 0 0.5rem;
+    flex-wrap: wrap;
+}
+
+.myitems-relist-label {
+    margin: 0;
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: var(--text-secondary);
+    white-space: nowrap;
+}
+
+.myitems-relist-days {
+    display: flex;
+    gap: 0.3rem;
+    flex: 1;
+}
+
+.myitems-day-option {
+    flex: 1;
+    text-align: center;
+    padding: 0.3rem 0.4rem;
+    border: 2px solid var(--border);
+    border-radius: 6px;
+    font-size: 0.78rem;
+    font-weight: 600;
+    cursor: pointer;
+    color: var(--text);
+    background: var(--bg-card);
+    transition: border-color var(--transition), background var(--transition);
+}
+
+.myitems-day-option:hover {
+    border-color: var(--navy);
+}
+
+.myitems-day-option--selected {
+    border-color: var(--navy);
+    background: #eef1f9;
+    color: var(--navy);
+}
+
+.myitems-relist-btn {
+    font-size: 0.82rem;
+    padding: 0.4rem 0.85rem;
+    white-space: nowrap;
+}
+
+/* Delete row */
+.myitems-delete-row {
+    display: flex;
+    gap: 0.5rem;
+    padding: 0 0.5rem 0.5rem;
+    flex-wrap: wrap;
+}
+
+.myitems-donate-btn {
+    flex: 1;
+    background: var(--orange);
+    color: #fff;
+    font-size: 0.82rem;
+    padding: 0.45rem 0.75rem;
+    font-weight: 600;
+    white-space: nowrap;
+}
+
+.myitems-donate-btn:hover:not(:disabled) {
+    background: var(--orange-light);
+}
+
+.myitems-delete-only-btn {
+    font-size: 0.82rem;
+    padding: 0.45rem 0.75rem;
+}
+
+/* Active listings heading separator */
+.myitems-active-heading {
+    margin: 0.5rem 0 0;
+    font-size: 0.92rem;
+    font-weight: 700;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}

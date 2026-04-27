@@ -78,7 +78,8 @@ export async function findExpiredUnnotifiedListings() {
          FROM listings l
          JOIN users u ON u.id = l.user_id
          WHERE l.expires_at <= NOW()
-           AND l.expiry_notified_at IS NULL`
+           AND l.expiry_notified_at IS NULL
+           AND l.deleted_at IS NULL`
     );
     return result.rows;
 }

@@ -7,7 +7,8 @@ import {
     findListingByIdForUser,
     findListingsByUserId,
     type ListingRecord,
-    updateListingById
+    updateListingById,
+	extendListingById
 } from '../db/queries/listingQueries';
 import { createListingReport } from '../db/queries/listingReportQueries';
 import { deleteListingImage, uploadListingImage } from './storageService';
@@ -232,4 +233,19 @@ export async function reportListingForUser(userId: string, listingId: string) {
     return {
         listingDeleted: result.listingDeleted
     };
+}
+
+export async function extendListingForUser(userId: string, listingId: string, extensionDays: number) {
+    const valid = [15, 30, 60];
+    if (!valid.includes(extensionDays)) {
+        throw new HttpError('Invalid extension period. Choose 15, 30, or 60 days.', 400);
+    }
+
+    const listing = await extendListingById({ listingId, userId, extensionDays });
+
+    if (!listing) {
+        throw new HttpError('Listing not found.', 404);
+    }
+
+    return toListingResponse(listing);
 }

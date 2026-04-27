@@ -8,7 +8,8 @@ import {
     getListingForUser,
     getListingsForUser,
     reportListingForUser,
-    updateListingForUser
+    updateListingForUser,
+	extendListingForUser
 } from '../services/listingService';
 
 function getUserId(req: Request) {
@@ -57,4 +58,10 @@ export async function deleteMyListing(req: Request, res: Response) {
 export async function toggleListingReport(req: Request, res: Response) {
     const status = await reportListingForUser(getUserId(req), req.params.listingId);
     return res.status(200).json(status);
+}
+
+export async function extendMyListing(req: Request, res: Response) {
+    const extensionDays = Number(req.body.extensionDays);
+    const listing = await extendListingForUser(getUserId(req), req.params.listingId, extensionDays);
+    return res.status(200).json({ listing });
 }

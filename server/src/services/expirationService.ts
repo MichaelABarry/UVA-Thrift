@@ -9,6 +9,7 @@ const HOOS_REUSE_URL = 'https://sustainability.virginia.edu/hoos-reuse';
 const CHECK_INTERVAL_MS = 1000 * 60*60*24; // 24 hours
 
 
+
 // Check for newly expired listings and send email + in-app notification to each owner.
 export async function notifyExpiredListings() {
     const expired = await findExpiredUnnotifiedListings();
@@ -32,7 +33,7 @@ export async function notifyExpiredListings() {
             await createSystemNotification({
                 userId: listing.user_id,
                 title: `Your listing has expired: ${listing.name}`,
-                body: `Your listing "${listing.name}" has expired and is no longer visible to other students. If it didn't sell, consider donating it through Hoos ReUse. Items go directly to Goodwill and the Charlottesville-Albemarle SPCA.`,
+                body: `Your listing "${listing.name}" has expired and is no longer visible to other students. If it didn't sell, you can re-list it, or consider donating it through Hoos ReUse. Items go directly to Goodwill and the Charlottesville-Albemarle SPCA.`,
                 link: HOOS_REUSE_URL,
             });
 

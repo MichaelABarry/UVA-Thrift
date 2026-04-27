@@ -473,9 +473,8 @@ export function HomePage() {
                                                     </span>
                                                 ))}
                                             </div>
-											<div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', flexWrap: 'wrap' }}>
                                             <span className="listing-date">{formatDate(listing.createdAt)}</span>
-											{listing.expiresAt ? (() => {
+											{listing.expiresAt && user?.id === listing.userId ? (() => {
                                                     const days = getDaysUntilExpiry(listing.expiresAt);
                                                     if (days <= 0) return (
                                                         <span className="listing-expiry-chip listing-expiry-chip--expired">⏰ Expired</span>
@@ -488,8 +487,7 @@ export function HomePage() {
                                                     );
                                                 })() : null}
                                             </div>
-                                        </div>
-
+       
                                         {expandedListPickerId === listing.id ? (
                                             <div className="listing-list-picker" onClick={(event) => event.stopPropagation()}>
                                                 {lists.length ? (

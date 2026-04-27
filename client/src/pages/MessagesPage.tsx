@@ -2,28 +2,21 @@ import { useEffect, useState } from 'react';
 import { Navigate, useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { getConversations } from '../services/conversationService';
-import {
-    getSystemNotifications,
-    markAllNotificationsRead,
-    markNotificationRead,
-    type SystemNotification,
-} from '../services/systemNotificationService';
 import type { ConversationSummary } from '../types/conversation';
 import { formatConversationPreview } from '../utils/conversationContent';
+import {
+    getSystemNotifications,
+	markNotificationRead,
+    markAllNotificationsRead,
+    type SystemNotification,
+} from '../services/systemNotificationService';
 
 function formatDate(iso: string): string {
     const date = new Date(iso);
     const now = new Date();
     const diffDays = Math.floor((now.getTime() - date.getTime()) / (1000 * 60 * 60 * 24));
-
-    if (diffDays === 0) {
-        return date.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
-    }
-
-    if (diffDays < 7) {
-        return date.toLocaleDateString('en-US', { weekday: 'short' });
-    }
-
+    if (diffDays === 0) return date.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+    if (diffDays < 7) return date.toLocaleDateString('en-US', { weekday: 'short' });
     return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
 }
 
@@ -33,7 +26,6 @@ export function MessagesPage() {
     const [conversations, setConversations] = useState<ConversationSummary[]>([]);
     const [loadingConversations, setLoadingConversations] = useState(true);
     const [error, setError] = useState<string | null>(null);
-
 	const [notifications, setNotifications] = useState<SystemNotification[]>([]);
     const [loadingNotifications, setLoadingNotifications] = useState(true);
 
@@ -70,25 +62,20 @@ export function MessagesPage() {
     if (!loading && !user?.isEmailVerified) {
         return <Navigate to="/" replace />;
     }
-
-	async function handleMarkRead(notificationId: string) {
+	
+	// Dismiss a single notification (mark as read + remove from view)
+	async function handleDismiss(notificationId: string) {
         await markNotificationRead(notificationId);
-        setNotifications((prev) =>
-            prev.map((n) =>
-                n.id === notificationId ? { ...n, readAt: new Date().toISOString() } : n
-            )
-        );
+        setNotifications((prev) => prev.filter((n) => n.id !== notificationId));
     }
 
-    async function handleMarkAllRead() {
+	// Clear all — marks all read and removes all from view
+    async function handleClearAll() {
         await markAllNotificationsRead();
-        setNotifications((prev) =>
-            prev.map((n) => ({ ...n, readAt: n.readAt ?? new Date().toISOString() }))
-        );
+        setNotifications([]);
     }
 
-    const unreadNotifications = notifications.filter((n) => !n.readAt);
-    const hasUnread = unreadNotifications.length > 0;
+    const visibleNotifications = notifications.filter((n) => !n.readAt);
 
     return (
         <main className="page-content">
@@ -101,32 +88,25 @@ export function MessagesPage() {
                 {error ? <p className="status status-error">{error}</p> : null}
 
 				{/* ── System Notifications ── */}
-                {!loadingNotifications && notifications.length > 0 ? (
+                {!loadingNotifications && visibleNotifications.length > 0 ? (
                     <section className="sysnotif-section">
                         <div className="sysnotif-header">
                             <h2 className="sysnotif-heading">
                                 Notifications
-                                {hasUnread ? (
-                                    <span className="sysnotif-badge">{unreadNotifications.length}</span>
-                                ) : null}
+                                <span className="sysnotif-badge">{visibleNotifications.length}</span>
                             </h2>
-                            {hasUnread ? (
                                 <button
                                     type="button"
-                                    className="sysnotif-mark-all"
-                                    onClick={() => { void handleMarkAllRead(); }}
+                                    className="sysnotif-clear-all"
+                                    onClick={() => { void handleClearAll(); }}
                                 >
-                                    Mark all as read
+                                    Clear All
                                 </button>
-                            ) : null}
                         </div>
 
                         <div className="sysnotif-list">
-                            {notifications.map((notif) => (
-                                <div
-                                    key={notif.id}
-                                    className={`sysnotif-item ${notif.readAt ? 'sysnotif-item--read' : 'sysnotif-item--unread'}`}
-                                >
+                            {visibleNotifications.map((notif) => (
+                                <div key={notif.id} className="sysnotif-item sysnotif-item--unread">
                                     <div className="sysnotif-item-body">
                                         <p className="sysnotif-item-title">{notif.title}</p>
                                         <p className="sysnotif-item-text">{notif.body}</p>
@@ -140,25 +120,22 @@ export function MessagesPage() {
                                                     target="_blank"
                                                     rel="noopener noreferrer"
                                                     className="sysnotif-item-link"
-                                                    onClick={() => {
-                                                        if (!notif.readAt) void handleMarkRead(notif.id);
-                                                    }}
+                                                    onClick={() => { void handleDismiss(notif.id); }}
                                                 >
                                                     Learn about Hoos ReUse ↗
                                                 </a>
                                             ) : null}
                                         </div>
                                     </div>
-                                    {!notif.readAt ? (
+                                    {/* ✕ dismiss button */}
                                         <button
                                             type="button"
                                             className="sysnotif-item-dismiss"
                                             aria-label="Dismiss notification"
-                                            onClick={() => { void handleMarkRead(notif.id); }}
+                                            onClick={() => { void handleDismiss(notif.id); }}
                                         >
                                             ✕
                                         </button>
-                                    ) : null}
                                 </div>
                             ))}
                         </div>

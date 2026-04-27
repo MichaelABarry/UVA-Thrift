@@ -8,7 +8,9 @@ function buildListingFormData(payload: CreateListingPayload | UpdateListingPaylo
     formData.append('price', String(payload.price));
     formData.append('categories', JSON.stringify(payload.categories));
     formData.append('condition', payload.condition);
+	if ('expirationDays' in payload && payload.expirationDays !== undefined) {
 	 formData.append('expirationDays', String(payload.expirationDays));
+	}
 
     if (payload.image) {
         formData.append('image', payload.image);
@@ -58,5 +60,12 @@ export function deleteListing(listingId: string) {
 export function reportListing(listingId: string) {
     return apiFetch<{ listingDeleted: boolean }>(`/api/listings/${listingId}/report`, {
         method: 'PUT'
+    });
+}
+
+export function extendListing(listingId: string, extensionDays: number) {
+    return apiFetch<{ listing: Listing }>(`/api/listings/${listingId}/extend`, {
+        method: 'PUT',
+        body: JSON.stringify({ extensionDays }),
     });
 }

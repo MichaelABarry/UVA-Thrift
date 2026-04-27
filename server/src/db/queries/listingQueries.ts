@@ -162,3 +162,22 @@ export async function deleteListingById(listingId: string, userId: string) {
 
     return result.rows[0] ?? null;
 }
+
+export async function extendListingById(input: {
+    listingId: string;
+    userId: string;
+    extensionDays: number;
+}): Promise<ListingRecord | null> {
+    const result = await pool.query<ListingRecord>(
+        `UPDATE listings
+         SET expires_at = NOW() + ($3 || ' days')::INTERVAL,
+             expiry_notified_at = NULL,
+             updated_at = NOW()
+         WHERE id = $1 AND user_id = $2
+           AND deleted_at IS NULL
+         RETURNING *`,
+        [input.listingId, input.userId, input.extensionDays]
+    );
+    return result.rows[0] ?? null;
+}
+
